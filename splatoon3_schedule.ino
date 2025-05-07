@@ -39,54 +39,91 @@ const char* apiUrlBankaraOpenNext = "https://spla3.yuu26.com/api/bankara-open/ne
 
 TFT_eSPI tft = TFT_eSPI();
 
-// Translation dictionaries
+// Battle type translations
+struct BattleTypeTranslation {
+  const char* japanese;
+  const char* english;
+  const char* romaji;
+};
+
+#define BATTLETYPE_DISPLAY_ENGLISH 0
+#define BATTLETYPE_DISPLAY_ROMAJI  1
+#ifndef BATTLETYPE_DISPLAY_MODE
+// 表示モードを英語/ローマ字に設定
+#define BATTLETYPE_DISPLAY_MODE BATTLETYPE_DISPLAY_ROMAJI
+#endif
+
+const BattleTypeTranslation battleTypeTranslations[] = {
+  { "レギュラーマッチ",        "Regular Battle",    "Regular Match" },
+  { "Xマッチ",                "X Battle",          "X Match" },
+  { "バンカラマッチ チャレンジ", "Anarchy Challenge", "Bankara Challenge" },
+  { "バンカラマッチ オープン",  "Anarchy Open",      "Bankara Open" }
+};
+const int battleTypeTranslationsCount = sizeof(battleTypeTranslations) / sizeof(BattleTypeTranslation);
+
 // Rule translations
 struct RuleTranslation {
   const char* japanese;
   const char* english;
+  const char* romaji;
   const char* symbol;  // ルールの記号
 };
 
+#define RULE_DISPLAY_ENGLISH 0
+#define RULE_DISPLAY_ROMAJI  1
+#ifndef RULE_DISPLAY_MODE
+// 表示モードを英語/ローマ字に設定
+#define RULE_DISPLAY_MODE RULE_DISPLAY_ROMAJI
+#endif
+
 const RuleTranslation ruleTranslations[] = {
-  { "ナワバリバトル", "Turf War", "" },
-  { "ガチエリア", "Splat Zones", "[-] " },
-  { "ガチヤグラ", "Tower Control", "|^| " },
-  { "ガチホコバトル", "Rainmaker", "{*} " },
-  { "ガチアサリ", "Clam Blitz", "(+) " }
+  { "ナワバリバトル", "Turf War",    "Nawabari", "" },
+  { "ガチエリア",     "Splat Zones", "Area",     "[-] " },
+  { "ガチヤグラ",     "Tower Control","Yagura",   "|^| " },
+  { "ガチホコバトル", "Rainmaker",   "Hoko",     "{*} " },
+  { "ガチアサリ",     "Clam Blitz",  "Asari",    "(+) " }
 };
 const int ruleTranslationsCount = sizeof(ruleTranslations) / sizeof(RuleTranslation);
 
-// Stage translations
+// Stage translations (add romaji/short)
 struct StageTranslation {
   const char* japanese;
   const char* english;
+  const char* romaji;
 };
 
+#define STAGE_DISPLAY_ENGLISH 0
+#define STAGE_DISPLAY_ROMAJI  1
+#ifndef STAGE_DISPLAY_MODE
+// 表示モードを英語/ローマ字に設定
+#define STAGE_DISPLAY_MODE STAGE_DISPLAY_ROMAJI
+#endif
+
 const StageTranslation stageTranslations[] = {
-  { "ユノハナ大渓谷", "Scorch Gorge" },
-  { "ゴンズイ地区", "Eeltail Alley" },
-  { "ヤガラ市場", "Hagglefish Market" },
-  { "マテガイ放水路", "Undertow Spillway" },
-  { "ナンプラー遺跡", "Um'ami Ruins" },
-  { "ナメロウ金属", "Mincemeat Metalworks" },
-  { "クサヤ温泉", "Brinewater Springs" },
-  { "タラポートショッピングパーク", "Barnacle & Dime" },
-  { "ヒラメが丘団地", "Flounder Heights" },
-  { "マサバ海峡大橋", "Hammerhead Bridge" },
-  { "キンメダイ美術館", "Museum d'Alfonsino" },
-  { "マヒマヒリゾート＆スパ", "Mahi-Mahi Resort" },
-  { "海女美術大学", "Inkblot Art Academy" },
-  { "チョウザメ造船", "Sturgeon Shipyard" },
-  { "ザトウマーケット", "Mako Mart" },
-  { "スメーシーワールド", "Wahoo World" },
-  { "コンブトラック", "Humpback Pump Track" },
-  { "マンタマリア号", "Manta Maria" },
-  { "タカアシ経済特区", "Crableg Capital" },
-  { "オヒョウ海運", "Shipshape Cargo Co." },
-  { "バイガイ亭", "Bayside Bowl" },
-  { "ネギトロ炭鉱", "Bluefin Depot" },
-  { "カジキ空港", "Marlin Airport" },
-  { "リュウグウターミナル", "Dragon Palace Terminal" }
+  { "ユノハナ大渓谷", "Scorch Gorge",            "Yunohana" },
+  { "ゴンズイ地区",   "Eeltail Alley",           "Gonzui" },
+  { "ヤガラ市場",     "Hagglefish Market",       "Yagara" },
+  { "マテガイ放水路", "Undertow Spillway",       "Mategai" },
+  { "ナンプラー遺跡", "Um'ami Ruins",            "Nampla" },
+  { "ナメロウ金属",   "Mincemeat Metalworks",    "Namero" },
+  { "クサヤ温泉",     "Brinewater Springs",      "Kusaya" },
+  { "タラポートショッピングパーク", "Barnacle & Dime", "Taraport" },
+  { "ヒラメが丘団地", "Flounder Heights",        "Hirame" },
+  { "マサバ海峡大橋", "Hammerhead Bridge",       "Masaba" },
+  { "キンメダイ美術館", "Museum d'Alfonsino",    "Kinmedai" },
+  { "マヒマヒリゾート＆スパ", "Mahi-Mahi Resort", "Mahimahi" },
+  { "海女美術大学",   "Inkblot Art Academy",     "Amabi" },
+  { "チョウザメ造船", "Sturgeon Shipyard",       "Chouzame" },
+  { "ザトウマーケット", "Mako Mart",             "Zatou" },
+  { "スメーシーワールド", "Wahoo World",          "Sume-shi" },
+  { "コンブトラック", "Humpback Pump Track",     "Kombu" },
+  { "マンタマリア号", "Manta Maria",             "Mantamaria" },
+  { "タカアシ経済特区", "Crableg Capital",        "Takaashi" },
+  { "オヒョウ海運",   "Shipshape Cargo Co.",     "Ohyou" },
+  { "バイガイ亭",     "Bayside Bowl",            "Baigai" },
+  { "ネギトロ炭鉱",   "Bluefin Depot",           "Negitoro" },
+  { "カジキ空港",     "Marlin Airport",          "Kajiki" },
+  { "リュウグウターミナル", "Dragon Palace Terminal", "Ryuuguu" }
 };
 const int stageTranslationsCount = sizeof(stageTranslations) / sizeof(StageTranslation);
 
@@ -115,28 +152,72 @@ void setBacklight(uint8_t brightness) {
   ledcWrite(TFT_BL_PIN, brightness);
 }
 
-// Helper function to translate rule names from Japanese to English and get the symbol
-void translateRuleInfo(const char* japaneseRule, char* englishRule, char* ruleSymbol) {
+// Helper function to translate rule names from Japanese to selected display and get the symbol
+void translateRuleInfo(const char* japaneseRule, char* outRule, char* ruleSymbol) {
   for (int i = 0; i < ruleTranslationsCount; i++) {
     if (strcmp(japaneseRule, ruleTranslations[i].japanese) == 0) {
-      strcpy(englishRule, ruleTranslations[i].english);
+      #if RULE_DISPLAY_MODE == RULE_DISPLAY_ROMAJI
+        strcpy(outRule, ruleTranslations[i].romaji);
+      #else
+        strcpy(outRule, ruleTranslations[i].english);
+      #endif
       strcpy(ruleSymbol, ruleTranslations[i].symbol);
       return;
     }
   }
   // Return original if no translation found and empty symbol
-  strcpy(englishRule, japaneseRule);
+  strcpy(outRule, japaneseRule);
   ruleSymbol[0] = '\0';
 }
 
-// Helper function to translate stage names from Japanese to English
+// Helper function to translate stage names from Japanese to selected display
 const char* translateStage(const char* japaneseStage) {
   for (int i = 0; i < stageTranslationsCount; i++) {
     if (strcmp(japaneseStage, stageTranslations[i].japanese) == 0) {
-      return stageTranslations[i].english;
+      #if STAGE_DISPLAY_MODE == STAGE_DISPLAY_ROMAJI
+        return stageTranslations[i].romaji;
+      #else
+        return stageTranslations[i].english;
+      #endif
     }
   }
   return japaneseStage;  // Return original if no translation found
+}
+
+// Helper function to translate battle type names
+const char* translateBattleType(const char* battleType) {
+  // Hardcoded mapping based on URL pattern to fixed battle types
+  if (strstr(battleType, "regular") || strcmp(battleType, "Regular Battle") == 0 || strcmp(battleType, "Turf War") == 0) {
+    #if BATTLETYPE_DISPLAY_MODE == BATTLETYPE_DISPLAY_ROMAJI
+      return "Regular Match";
+    #else
+      return "Regular Battle";
+    #endif
+  } 
+  else if (strstr(battleType, "x") || strcmp(battleType, "X Battle") == 0) {
+    #if BATTLETYPE_DISPLAY_MODE == BATTLETYPE_DISPLAY_ROMAJI
+      return "X Match";
+    #else
+      return "X Battle";
+    #endif
+  }
+  else if (strstr(battleType, "bankara-challenge") || strcmp(battleType, "Anarchy Challenge") == 0) {
+    #if BATTLETYPE_DISPLAY_MODE == BATTLETYPE_DISPLAY_ROMAJI
+      return "Bankara Challenge";
+    #else
+      return "Anarchy Challenge";
+    #endif
+  }
+  else if (strstr(battleType, "bankara-open") || strcmp(battleType, "Anarchy Open") == 0) {
+    #if BATTLETYPE_DISPLAY_MODE == BATTLETYPE_DISPLAY_ROMAJI
+      return "Bankara Open";
+    #else
+      return "Anarchy Open";
+    #endif
+  }
+  
+  // If we got here, it's an unrecognized type
+  return battleType;
 }
 
 // Generic function to update battle data
@@ -459,11 +540,11 @@ void drawBottomInfo() {
 void updateDisplay() {
   tft.fillScreen(TFT_BLACK);
 
-  // 先に4つの象限を描画
-  drawBattleQuadrant(0, 0, "Turf War", &regular, &regularNext, COLOR_REGULAR);
-  drawBattleQuadrant(QUADRANT_WIDTH, 0, "X Battle", &xMatch, &xMatchNext, COLOR_XMATCH);
-  drawBattleQuadrant(0, QUADRANT_HEIGHT, "Anarchy Challenge", &bankaraChallenge, &bankaraChallengeNext, COLOR_BANKARA_CHALLENGE);
-  drawBattleQuadrant(QUADRANT_WIDTH, QUADRANT_HEIGHT, "Anarchy Open", &bankaraOpen, &bankaraOpenNext, COLOR_BANKARA_OPEN);
+  // 先に4つの象限を描画 (バトル種別の表示方法を切り替え)
+  drawBattleQuadrant(0, 0, translateBattleType("Regular Battle"), &regular, &regularNext, COLOR_REGULAR);
+  drawBattleQuadrant(QUADRANT_WIDTH, 0, translateBattleType("X Battle"), &xMatch, &xMatchNext, COLOR_XMATCH);
+  drawBattleQuadrant(0, QUADRANT_HEIGHT, translateBattleType("Anarchy Challenge"), &bankaraChallenge, &bankaraChallengeNext, COLOR_BANKARA_CHALLENGE);
+  drawBattleQuadrant(QUADRANT_WIDTH, QUADRANT_HEIGHT, translateBattleType("Anarchy Open"), &bankaraOpen, &bankaraOpenNext, COLOR_BANKARA_OPEN);
 
   // 分割線を描画（太さと色を強調）
   tft.drawLine(QUADRANT_WIDTH, 0, QUADRANT_WIDTH, SCREEN_HEIGHT, TFT_WHITE);
