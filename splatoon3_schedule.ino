@@ -32,10 +32,10 @@ const char* apiUrlBankaraOpenNext = "https://spla3.yuu26.com/api/bankara-open/ne
 #define COLOR_BANKARA_OPEN 0xFD00       // Orange (#FFA500) - Same as Challenge
 
 // ルールごとのシンボル色を定義
-#define COLOR_RULE_AREA 0xA018    // 紫色 (Purple)
+#define COLOR_RULE_AREA 0x07E0    // 緑色 (Green)
 #define COLOR_RULE_YAGURA 0x15BD  // 青色 (Blue)
 #define COLOR_RULE_HOKO 0xFE60    // 金色/黄色 (Gold/Yellow)
-#define COLOR_RULE_ASARI 0x07E0   // 緑色 (Green)
+#define COLOR_RULE_ASARI 0x0BE0   // 濃い緑色 (Olive Green)
 
 TFT_eSPI tft = TFT_eSPI();
 
