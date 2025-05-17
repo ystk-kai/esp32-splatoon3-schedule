@@ -1,0 +1,14 @@
+; Local configuration - copy to local.ini and modify as needed
+; This file is not tracked by Git
+
+[env:esp32dev]
+; Uncomment and set your upload port
+;upload_port = COM4          ; Windows
+;upload_port = /dev/ttyUSB0  ; Linux
+;upload_port = /dev/cu.usbserial-XXXXXX  ; macOS
+
+; Optional monitor settings
+;monitor_port = ${env:esp32dev.upload_port}
+;monitor_filters = 
+;    colorize
+;    time 

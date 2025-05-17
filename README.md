@@ -15,7 +15,7 @@ Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカ�
 
 ## ソフトウェア要件
 
-- Arduino IDE
+- PlatformIO
 - ライブラリ:
   - [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI)
   - [ArduinoJson](https://arduinojson.org/)
@@ -23,10 +23,16 @@ Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカ�
 
 ## 使い方
 
-1. `splatoon3_schedule.ino` をArduino IDEで開きます。
-2. WiFi設定（`ssid`, `password`）を自分の環境に合わせて書き換えます。
-3. 必要なライブラリをインストールします。
-4. ESP32に書き込みます。
+```bash
+# プロジェクトをビルド
+pio run
+
+# ESPにアップロード
+pio run --target upload
+
+# シリアルモニターを開く
+pio device monitor
+```
 
 ## 機能
 
@@ -37,6 +43,8 @@ Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカ�
 - 5分ごとに自動更新
 - 表示モード切り替え（英語/ローマ字）
     - 初期値はローマ字表示
+- Wi-Fi設定の保存とキャプティブポータルによる設定変更
+- Web設定画面による各種表示設定の変更
 
 ## 画面イメージ
 
@@ -125,16 +133,69 @@ Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカ�
    #define STAGE_DISPLAY_MODE STAGE_DISPLAY_ENGLISH  // 表示モード選択
    ```
 
-表示モードを変更するには、`splatoon3_schedule.ino`ファイル内の対応する`#define`文を編集してください。  
+表示モードを変更するには、`src/utils/constants.h`ファイル内の対応する`#define`文を編集してください。  
 英語表示モードの場合は値を`0`に、ローマ字表示モードの場合は値を`1`に設定します。
 
-例えば、バトル種別をローマ字表示に、ルールと場所を英語表示にするには：
+## Setup and Connection
 
-```cpp
-#define BATTLETYPE_DISPLAY_MODE BATTLETYPE_DISPLAY_ROMAJI  // ローマ字表示 (1)
-#define RULE_DISPLAY_MODE RULE_DISPLAY_ENGLISH             // 英語表示 (0)
-#define STAGE_DISPLAY_MODE STAGE_DISPLAY_ENGLISH           // 英語表示 (0)
+### 1. USBデバイスをWSL2で利用可能にする方法
+
+#### usbipd-winを使用する方法
+
+1. **usbipd-winのインストール**（Windows側）
+   
+   PowerShellを管理者として開き、以下のコマンドを実行します：
+   ```powershell
+   winget install dorssel.usbipd-win
+   ```
+
+2. **WSL2側の設定**
+
+   WSL2のターミナルで以下のコマンドを実行します：
+   ```bash
+   sudo apt update
+   sudo apt install linux-tools-generic hwdata
+   sudo update-alternatives --install /usr/local/bin/usbip usbip /usr/lib/linux-tools/*/usbip 20
+   ```
+
+3. **デバイスの確認とアタッチ**（Windows側）
+
+   PowerShellを管理者として開き、以下のコマンドを実行します：
+   ```powershell
+   # 接続されているUSBデバイスの一覧を表示
+   usbipd list
+   
+   # COM4に対応するデバイスIDを見つけ、アタッチする
+   # 例: デバイスIDが1-8の場合
+   usbipd bind --busid 1-8
+   usbipd attach --wsl --busid 1-8
+   ```
+
+4. **WSL2側での確認**
+
+   WSL2のターミナルで以下のコマンドを実行します：
+   ```bash
+   # デバイスが認識されているか確認
+   lsusb
+   dmesg | grep tty
+   ```
+
+   シリアルデバイスは通常、WSL2内で `/dev/ttyUSB0` や `/dev/ttyACM0` などとして認識されます。
+
+### 2. シリアルポートを使用する
+
+デバイスが正しく認識されたら、以下のようにアクセスできます：
+
+```bash
+# シリアルポートの確認
+ls -l /dev/tty*
+
+# シリアルポートに接続する例（例: 115200 bpsの場合）
+sudo apt install screen
+sudo screen /dev/ttyUSB0 115200
 ```
 
+
 ## 参考API
+
 - [spla3.yuu26.com](https://spla3.yuu26.com/)
