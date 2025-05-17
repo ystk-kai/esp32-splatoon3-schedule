@@ -7,6 +7,7 @@
 #include "ScheduleService.h"
 #include "DisplayService.h"
 #include "NetworkService.h"
+#include "WiFiService.h"
 #include "../domain/DisplaySettings.h"
 
 namespace Application
@@ -55,72 +56,93 @@ namespace Application
             return connected;
         }
 
+        // Initialize the application with WiFiService
+        bool initialize(WiFiService &wifiService)
+        {
+            // Show startup screen
+            displayService.initialize();
+            displayService.showStartupScreen();
+
+            // Wait for WiFi connection
+            while (!wifiService.isConnected())
+            {
+                delay(100);
+                // If captive portal is active, show portal info
+                if (wifiService.isCaptivePortalActive())
+                {
+                    displayService.showConnectionStatus(
+                        false,
+                        "WiFi Portal Active");
+                    return false;
+                }
+            }
+
+            // Show connection status
+            displayService.showConnectionStatus(
+                true,
+                "Connected!");
+
+            // Configure time service
+            networkService.configureTimeService();
+
+            // Initial data fetch
+            displayService.showLoadingMessage("Fetching data...");
+            scheduleService.updateAllSchedules();
+
+            // Update display
+            updateDisplay();
+
+            return true;
+        }
+
         // Update all schedule data and refresh display
         void updateAllData()
         {
+            // Update all schedule data
             scheduleService.updateAllSchedules();
+
+            // Update display
             updateDisplay();
         }
 
-        // Update just the current time display (bottom info bar)
+        // Update only the time display (for more efficient updates)
         void updateTimeDisplay()
         {
-            char currentDateTime[17];
-            char lastUpdateTime[16];
-
-            if (networkService.getCurrentDateTime(currentDateTime, sizeof(currentDateTime)) &&
-                networkService.getLastUpdateTime(lastUpdateTime, sizeof(lastUpdateTime)))
-            {
-                displayService.updateBottomInfo(currentDateTime, lastUpdateTime);
-            }
+            displayService.updateTimeDisplay();
         }
 
         // Update display with current schedule data
         void updateDisplay()
         {
-            // Get all schedule data
-            auto regularSchedule = scheduleService.getCurrentRegularSchedule();
-            auto regularNextSchedule = scheduleService.getNextRegularSchedule();
-            auto xMatchSchedule = scheduleService.getCurrentXMatchSchedule();
-            auto xMatchNextSchedule = scheduleService.getNextXMatchSchedule();
-            auto bankaraChallengeSchedule = scheduleService.getCurrentBankaraChallengeSchedule();
-            auto bankaraChallengeNextSchedule = scheduleService.getNextBankaraChallengeSchedule();
-            auto bankaraOpenSchedule = scheduleService.getCurrentBankaraOpenSchedule();
-            auto bankaraOpenNextSchedule = scheduleService.getNextBankaraOpenSchedule();
+            // Get current schedules
+            Domain::BattleSchedule regularSchedule = scheduleService.getCurrentRegularSchedule();
+            Domain::BattleSchedule xSchedule = scheduleService.getCurrentXMatchSchedule();
+            Domain::BattleSchedule anarchyChallengeSchedule = scheduleService.getCurrentBankaraChallengeSchedule();
+            Domain::BattleSchedule anarchyOpenSchedule = scheduleService.getCurrentBankaraOpenSchedule();
 
-            // Get current time info
-            char currentDateTime[17];
-            char lastUpdateTime[16];
+            // Get next schedules
+            Domain::BattleSchedule regularNextSchedule = scheduleService.getNextRegularSchedule();
+            Domain::BattleSchedule xNextSchedule = scheduleService.getNextXMatchSchedule();
+            Domain::BattleSchedule anarchyChallengeNextSchedule = scheduleService.getNextBankaraChallengeSchedule();
+            Domain::BattleSchedule anarchyOpenNextSchedule = scheduleService.getNextBankaraOpenSchedule();
 
-            networkService.getCurrentDateTime(currentDateTime, sizeof(currentDateTime));
-            networkService.getLastUpdateTime(lastUpdateTime, sizeof(lastUpdateTime));
-
-            // Update display
-            displayService.updateScreen(
+            // Update display with schedules
+            displayService.updateDisplay(
                 regularSchedule,
+                xSchedule,
+                anarchyChallengeSchedule,
+                anarchyOpenSchedule,
                 regularNextSchedule,
-                xMatchSchedule,
-                xMatchNextSchedule,
-                bankaraChallengeSchedule,
-                bankaraChallengeNextSchedule,
-                bankaraOpenSchedule,
-                bankaraOpenNextSchedule,
-                currentDateTime,
-                lastUpdateTime,
+                xNextSchedule,
+                anarchyChallengeNextSchedule,
+                anarchyOpenNextSchedule,
                 displaySettings);
         }
 
-        // Change display settings
+        // Set display settings
         void setDisplaySettings(const Domain::DisplaySettings &settings)
         {
             displaySettings = settings;
-            updateDisplay();
-        }
-
-        // Get current display settings
-        const Domain::DisplaySettings &getDisplaySettings() const
-        {
-            return displaySettings;
         }
 
     private:

@@ -29,6 +29,13 @@ namespace Infrastructure
             tft.setRotation(1); // Landscape mode
         }
 
+        // 表示状態をリセットする
+        void resetDisplayState()
+        {
+            // 静的変数をリセットするために使用
+            isFirstStatusCall = true;
+        }
+
         // Set backlight brightness level (0-255)
         void setBacklight(uint8_t brightness) override
         {
@@ -69,10 +76,97 @@ namespace Infrastructure
         // Show loading message
         void showLoadingMessage(const char *message) override;
 
+        // Update time display at bottom of screen
+        void updateTimeDisplay() override
+        {
+            // 現在時刻を取得して表示を更新
+            char currentDateTime[64];
+            char lastUpdateTime[64];
+
+            // 現在時刻のフォーマット（年月日と時分までを表示、秒は省略）
+            time_t now;
+            struct tm timeinfo;
+            time(&now);
+            localtime_r(&now, &timeinfo);
+            strftime(currentDateTime, sizeof(currentDateTime), "%Y-%m-%d %H:%M", &timeinfo);
+
+            // 最終更新時刻は現在時刻を5分単位に丸める（例：23:17→23:15）
+            struct tm updateTime = timeinfo;
+            // 分を5の倍数に丸める（0, 5, 10, 15...）
+            updateTime.tm_min = (updateTime.tm_min / 5) * 5;
+            updateTime.tm_sec = 0;
+
+            // 時刻のみの形式でフォーマット（HH:MM）
+            time_t roundedTime = mktime(&updateTime);
+            strftime(lastUpdateTime, sizeof(lastUpdateTime), "%H:%M", &updateTime);
+
+            // 下部情報バーを更新
+            updateBottomInfo(currentDateTime, lastUpdateTime);
+        }
+
+        // Update display with the specified schedules
+        void updateDisplay(
+            const Domain::BattleSchedule &regularSchedule,
+            const Domain::BattleSchedule &xSchedule,
+            const Domain::BattleSchedule &anarchyChallengeSchedule,
+            const Domain::BattleSchedule &anarchyOpenSchedule,
+            const Domain::BattleSchedule &regularNextSchedule,
+            const Domain::BattleSchedule &xNextSchedule,
+            const Domain::BattleSchedule &anarchyChallengeNextSchedule,
+            const Domain::BattleSchedule &anarchyOpenNextSchedule,
+            const Domain::DisplaySettings &displaySettings) override
+        {
+            char currentDateTime[64];
+            char lastUpdateTime[64];
+
+            // 現在時刻のフォーマット（年月日と時分までを表示、秒は省略）
+            time_t now;
+            struct tm timeinfo;
+            time(&now);
+            localtime_r(&now, &timeinfo);
+            strftime(currentDateTime, sizeof(currentDateTime), "%Y-%m-%d %H:%M", &timeinfo);
+
+            // 最終更新時刻は現在時刻を5分単位に丸める（例：23:17→23:15）
+            struct tm updateTime = timeinfo;
+            // 分を5の倍数に丸める（0, 5, 10, 15...）
+            updateTime.tm_min = (updateTime.tm_min / 5) * 5;
+            updateTime.tm_sec = 0;
+
+            // 時刻のみの形式でフォーマット（HH:MM）
+            time_t roundedTime = mktime(&updateTime);
+            strftime(lastUpdateTime, sizeof(lastUpdateTime), "%H:%M", &updateTime);
+
+            // 画面全体を更新（次の予定情報も含めて表示）
+            updateScreen(
+                regularSchedule,
+                regularNextSchedule,
+                xSchedule,
+                xNextSchedule,
+                anarchyChallengeSchedule,
+                anarchyChallengeNextSchedule,
+                anarchyOpenSchedule,
+                anarchyOpenNextSchedule,
+                currentDateTime,
+                lastUpdateTime,
+                displaySettings);
+        }
+
     private:
         TFT_eSPI tft;
         uint8_t backlightPin;
         uint8_t pwmChannel;
+
+        // showConnectionStatusメソッドの状態管理用
+        static bool isFirstStatusCall;
+
+        // Colors for Splatoon3 theme
+        static constexpr uint16_t SPLATOON_BLUE = 0x04FF;   // 青インク色相当
+        static constexpr uint16_t SPLATOON_ORANGE = 0xFD00; // オレンジインク色相当
+        static constexpr uint16_t SPLATOON_GREEN = 0x07E0;  // 緑インク色相当
+        static constexpr uint16_t SPLATOON_PINK = 0xF81F;   // ピンクインク色相当
+        static constexpr uint16_t SPLATOON_YELLOW = 0xFFE0; // 黄色インク色相当
+        static constexpr uint16_t SPLATOON_NAVY = 0x000F;   // 濃い青（背景用）
+        static constexpr uint16_t SPLATOON_PURPLE = 0x780F; // 紫インク色相当
 
         // Constants
         static constexpr int SCREEN_WIDTH = 320;

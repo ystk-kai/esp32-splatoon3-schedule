@@ -52,6 +52,21 @@ namespace Application
 
         // Show loading message
         virtual void showLoadingMessage(const char *message) = 0;
+
+        // Update time display at bottom of screen
+        virtual void updateTimeDisplay() = 0;
+
+        // Update display with the specified schedules
+        virtual void updateDisplay(
+            const Domain::BattleSchedule &regularSchedule,
+            const Domain::BattleSchedule &xSchedule,
+            const Domain::BattleSchedule &anarchyChallengeSchedule,
+            const Domain::BattleSchedule &anarchyOpenSchedule,
+            const Domain::BattleSchedule &regularNextSchedule,
+            const Domain::BattleSchedule &xNextSchedule,
+            const Domain::BattleSchedule &anarchyChallengeNextSchedule,
+            const Domain::BattleSchedule &anarchyOpenNextSchedule,
+            const Domain::DisplaySettings &displaySettings) = 0;
     };
 
 } // namespace Application

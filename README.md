@@ -1,8 +1,8 @@
 # esp32-splatoon3-schedule
 
-Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカラチャレンジ、バンカラオープン）をESP32とTFT液晶（例: ESP32-2432S028R + ILI9341）で表示するプロジェクトです。
+Splatoon3 のバトルスケジュール（ナワバリ、X マッチ、バンカラチャレンジ、バンカラオープン）を ESP32 と TFT 液晶（例: ESP32-2432S028R + ILI9341）で表示するプロジェクトです。
 
-- WiFi経由でAPIからスケジュール情報を取得します。
+- WiFi 経由で API からスケジュール情報を取得します。
 - 4分割画面で現在・次回のルール、ステージ、時間を表示します。
 - ルール名・ステージ名は日本語→英語変換に対応しています。
 - 画面下部に現在時刻と最終更新時刻を表示します。
@@ -10,8 +10,8 @@ Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカ�
 ## ハードウェア要件
 
 - ESP32（例: ESP32-2432S028R）
-- 320x240 TFT液晶（ILI9341等、TFT_eSPIライブラリ対応）
-- WiFi環境
+- 320x240 TFT 液晶（ILI9341 等、TFT_eSPI ライブラリ対応）
+- WiFi 環境
 
 ## ソフトウェア要件
 
@@ -19,7 +19,7 @@ Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカ�
 - ライブラリ:
   - [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI)
   - [ArduinoJson](https://arduinojson.org/)
-  - WiFi, HTTPClient（ESP32標準）
+  - WiFi, HTTPClient（ESP32 標準）
 
 ## 使い方
 
@@ -27,7 +27,7 @@ Splatoon3のバトルスケジュール（ナワバリ、Xマッチ、バンカ�
 # プロジェクトをビルド
 pio run
 
-# ESPにアップロード
+# ESP にアップロード
 pio run --target upload
 
 # シリアルモニターを開く
@@ -36,15 +36,13 @@ pio device monitor
 
 ## 機能
 
-- Splatoon3の4種バトル（Turf War, X Battle, Anarchy Challenge, Anarchy Open）の現在・次回スケジュールを表示
+- Splatoon3 の 4種バトル（Turf War, X Battle, Anarchy Challenge, Anarchy Open）の現在・次回スケジュールを表示
 - ルール名・ステージ名を日本語→英語変換
 - ルールごとに色分け・シンボル表示
 - 画面下部に現在時刻・最終更新時刻を表示
 - 5分ごとに自動更新
-- 表示モード切り替え（英語/ローマ字）
-    - 初期値はローマ字表示
-- Wi-Fi設定の保存とキャプティブポータルによる設定変更
-- Web設定画面による各種表示設定の変更
+- Wi-Fi 設定の保存とキャプティブポータルによる設定変更
+- Web 設定画面による各種表示設定の変更
 
 ## 画面イメージ
 
@@ -107,80 +105,99 @@ pio device monitor
 | カジキ空港        | Marlin Airport         | Kajiki     |
 | リュウグウターミナル     | Dragon Palace Terminal | Ryuuguu    |
 
-## 表示モード切り替え
+## WiFi 設定（キャプティブポータル）
 
-このプロジェクトでは、テキスト表示モードを英語（English）とローマ字（Romaji）の間で切り替えることができます。  
-以下の3つの表示設定が可能です：
+このプロジェクトでは、キャプティブポータルを使用して WiFi 設定を行います。
 
-1. バトル種別の表示モード
-   ```cpp
-   #define BATTLETYPE_DISPLAY_ENGLISH 0  // 英語表示
-   #define BATTLETYPE_DISPLAY_ROMAJI  1  // ローマ字表示
-   #define BATTLETYPE_DISPLAY_MODE BATTLETYPE_DISPLAY_ENGLISH  // 表示モード選択
-   ```
+### 初回起動時／WiFi 設定がない場合
 
-2. ルールの表示モード
-   ```cpp
-   #define RULE_DISPLAY_ENGLISH 0  // 英語表示
-   #define RULE_DISPLAY_ROMAJI  1  // ローマ字表示
-   #define RULE_DISPLAY_MODE RULE_DISPLAY_ENGLISH  // 表示モード選択
-   ```
+1. デバイスの電源を入れると、自動的にキャプティブポータルモードで起動します
+2. 「ESP32-Splatoon3-Schedule」という SSID の WiFi アクセスポイントが作成されます
+3. スマートフォンや PC でこのアクセスポイントに接続します
+4. 接続すると自動的に設定ページが表示されるか、表示されない場合は「192.168.4.1」にブラウザでアクセスします
+5. 表示された設定画面で、接続したい WiFi の SSID とパスワードを入力します
+6. 設定を保存すると ESP32 が再起動し、設定した WiFi ネットワークに接続します
 
-3. ステージの表示モード
-   ```cpp
-   #define STAGE_DISPLAY_ENGLISH 0  // 英語表示
-   #define STAGE_DISPLAY_ROMAJI  1  // ローマ字表示
-   #define STAGE_DISPLAY_MODE STAGE_DISPLAY_ENGLISH  // 表示モード選択
-   ```
+### 既存の WiFi 設定がある場合
 
-表示モードを変更するには、`src/utils/constants.h`ファイル内の対応する`#define`文を編集してください。  
-英語表示モードの場合は値を`0`に、ローマ字表示モードの場合は値を`1`に設定します。
+1. デバイスの電源を入れると、起動時に 10秒間だけキャプティブポータルモードになります
+2. その間に設定を変更する場合は、「ESP32-Splatoon3-Schedule」という SSID に接続し設定を変更できます
+3. 10秒間何も操作がなければ、自動的に保存済みの WiFi 設定で接続を開始します
+4. キャプティブポータルに接続すると、タイマーが一時停止し、設定を変更するための時間が確保されます
+
+### 表示モード設定（英語/ローマ字）
+
+キャプティブポータルの設定画面では、以下の表示モード設定が可能です：
+
+1. バトル種別の表示モード - ローマ字（例: Regular Match）または英語（例: Regular Battle）
+2. ルールの表示モード - ローマ字（例: Area）または英語（例: Splat Zones）
+3. ステージの表示モード - ローマ字（例: Yunohana）または英語（例: Scorch Gorge）
+
+これらの設定は Preferences に保存され、デバイス再起動後も維持されます。
+初期値はすべてローマ字表示に設定されています。
+
+### WiFi 接続状態の確認
+
+- WiFi 設定中は画面上部がオレンジ色で「WiFi Setup」と表示されます
+- 設定した WiFi に接続中は「Connecting to WiFi」と表示されます
+- 接続成功すると画面上部が緑色になり「Connection OK」と表示されます
+- 画面には SSID や IP アドレスが色分けされて表示され、接続状態が一目でわかるようになっています
+
+### 設定後の動作
+
+1. WiFi 設定を保存すると、設定は内部ストレージ（Preferences）に保存されます
+2. 設定保存後、デバイスは自動的に再起動します
+3. 再起動後、保存した WiFi 設定を使用して接続を試みます
+4. 接続に成功すると、Splatoon3 のスケジュール情報を自動的に取得して表示を開始します
+5. 表示モード設定（英語/ローマ字）も保存され、スケジュール表示に反映されます
+
+正常に接続されると、自動的に Splatoon3 のスケジュール情報を取得して表示を開始します。スケジュール情報は 5分ごとに自動更新され、画面下部に最終更新時刻が表示されます。
 
 ## Setup and Connection
 
-### 1. USBデバイスをWSL2で利用可能にする方法
+### 1. USB デバイスを WSL2 で利用可能にする方法
 
-#### usbipd-winを使用する方法
+#### usbipd-win を使用する方法
 
-1. **usbipd-winのインストール**（Windows側）
+1. **usbipd-win のインストール**（Windows 側）
    
-   PowerShellを管理者として開き、以下のコマンドを実行します：
+   PowerShell を管理者として開き、以下のコマンドを実行します：
    ```powershell
    winget install dorssel.usbipd-win
    ```
 
-2. **WSL2側の設定**
+2. **WSL2 側の設定**
 
-   WSL2のターミナルで以下のコマンドを実行します：
+   WSL2 のターミナルで以下のコマンドを実行します：
    ```bash
    sudo apt update
    sudo apt install linux-tools-generic hwdata
    sudo update-alternatives --install /usr/local/bin/usbip usbip /usr/lib/linux-tools/*/usbip 20
    ```
 
-3. **デバイスの確認とアタッチ**（Windows側）
+3. **デバイスの確認とアタッチ**（Windows 側）
 
-   PowerShellを管理者として開き、以下のコマンドを実行します：
+   PowerShell を管理者として開き、以下のコマンドを実行します：
    ```powershell
-   # 接続されているUSBデバイスの一覧を表示
+   # 接続されている USB デバイスの一覧を表示
    usbipd list
    
-   # COM4に対応するデバイスIDを見つけ、アタッチする
-   # 例: デバイスIDが1-8の場合
+   # COM4 に対応するデバイス ID を見つけ、アタッチする
+   # 例: デバイス ID が 1-8 の場合
    usbipd bind --busid 1-8
    usbipd attach --wsl --busid 1-8
    ```
 
-4. **WSL2側での確認**
+4. **WSL2 側での確認**
 
-   WSL2のターミナルで以下のコマンドを実行します：
+   WSL2 のターミナルで以下のコマンドを実行します：
    ```bash
    # デバイスが認識されているか確認
    lsusb
    dmesg | grep tty
    ```
 
-   シリアルデバイスは通常、WSL2内で `/dev/ttyUSB0` や `/dev/ttyACM0` などとして認識されます。
+   シリアルデバイスは通常、WSL2 内で `/dev/ttyUSB0` や `/dev/ttyACM0` などとして認識されます。
 
 ### 2. シリアルポートを使用する
 
@@ -190,12 +207,12 @@ pio device monitor
 # シリアルポートの確認
 ls -l /dev/tty*
 
-# シリアルポートに接続する例（例: 115200 bpsの場合）
+# シリアルポートに接続する例（例: 115200 bps の場合）
 sudo apt install screen
 sudo screen /dev/ttyUSB0 115200
 ```
 
 
-## 参考API
+## 参考 API
 
 - [spla3.yuu26.com](https://spla3.yuu26.com/)

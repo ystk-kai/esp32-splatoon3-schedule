@@ -1,7 +1,10 @@
 #include "TFTDisplayService.h"
+#include <cstring>
 
 namespace Infrastructure
 {
+    // 静的変数の初期化
+    bool TFTDisplayService::isFirstStatusCall = true;
 
     void TFTDisplayService::updateScreen(
         const Domain::BattleSchedule &regularSchedule,
@@ -16,10 +19,13 @@ namespace Infrastructure
         const char *lastUpdateTime,
         const Domain::DisplaySettings &displaySettings)
     {
-        // Clear the screen first
-        tft.fillScreen(TFT_BLACK);
+        // Clear screen
+        clearScreen();
 
-        // Draw each battle quadrant
+        // Turn on backlight to full brightness
+        setBacklight(255);
+
+        // Draw each quadrant
         drawBattleQuadrant(0, 0, regularSchedule, regularNextSchedule, displaySettings);
         drawBattleQuadrant(QUADRANT_WIDTH, 0, xMatchSchedule, xMatchNextSchedule, displaySettings);
         drawBattleQuadrant(0, QUADRANT_HEIGHT, bankaraChallengeSchedule, bankaraChallengeNextSchedule, displaySettings);
@@ -29,7 +35,7 @@ namespace Infrastructure
         tft.drawLine(QUADRANT_WIDTH, 0, QUADRANT_WIDTH, SCREEN_HEIGHT, TFT_WHITE);
         tft.drawLine(0, QUADRANT_HEIGHT, SCREEN_WIDTH, QUADRANT_HEIGHT, TFT_WHITE);
 
-        // Update bottom info
+        // Update bottom info (current date/time and update time)
         updateBottomInfo(currentDateTime, lastUpdateTime);
     }
 
@@ -61,29 +67,217 @@ namespace Infrastructure
     void TFTDisplayService::showStartupScreen()
     {
         clearScreen();
-        tft.setTextColor(TFT_GREEN);
-        tft.setTextSize(2);
-        tft.setCursor(40, 100);
+
+        // 画面上半分に背景色を設定
+        tft.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2, SPLATOON_BLUE);
+
+        // Splatoon3タイトルを表示
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(3);
+        tft.setCursor(30, 40);
         tft.println("Splatoon3");
-        tft.setCursor(40, 140);
+
+        // Scheduleサブタイトルを表示
+        tft.setTextSize(2);
+        tft.setCursor(90, 80);
         tft.println("Schedule");
+
+        // 下半分にロゴや説明などを表示
+        tft.setTextColor(SPLATOON_ORANGE);
+        tft.setTextSize(1);
+        tft.setCursor(20, SCREEN_HEIGHT / 2 + 30);
+        tft.println("WiFi connection required.");
+
+        tft.setTextColor(SPLATOON_GREEN);
+        tft.setCursor(20, SCREEN_HEIGHT / 2 + 50);
+        tft.println("Shows current & upcoming stages.");
+
+        // バージョン情報
+        tft.setTextColor(TFT_LIGHTGREY);
+        tft.setCursor(SCREEN_WIDTH - 70, SCREEN_HEIGHT - 20);
+        tft.println("v1.1.0");
     }
 
     void TFTDisplayService::showConnectionStatus(bool connected, const char *statusMessage)
     {
-        tft.setTextColor(connected ? TFT_GREEN : TFT_RED);
-        tft.setTextSize(1);
-        tft.setCursor(70, 180);
-        tft.println(statusMessage);
+        // 初回表示かどうかを判断するための静的変数
+        static String previousPortalMessage = "";
+
+        // 前回表示された秒数の位置を記録する変数
+        static int lastSecondsPosX = 0;
+        static int lastSecondsPosY = 0;
+        static String lastSecondsValue = "";
+
+        // 初回呼び出し時のみ画面をクリアして背景やヘッダーを描画
+        if (isFirstStatusCall)
+        {
+            clearScreen();
+
+            // 上部に背景色のヘッダーを表示
+            tft.fillRect(0, 0, SCREEN_WIDTH, 30, connected ? SPLATOON_GREEN : SPLATOON_ORANGE);
+
+            // ヘッダーにタイトルを表示
+            tft.setTextColor(TFT_BLACK);
+            tft.setTextSize(2);
+            tft.setCursor(40, 5);
+            tft.println(connected ? "Connection OK" : "WiFi Setup");
+
+            // 画面下部に装飾
+            tft.fillRect(0, SCREEN_HEIGHT - 10, SCREEN_WIDTH, 10, connected ? SPLATOON_GREEN : SPLATOON_ORANGE);
+
+            isFirstStatusCall = false;
+            previousPortalMessage = ""; // メッセージもリセット
+        }
+
+        String message = String(statusMessage);
+
+        // メインメッセージ部分が変わった場合のみその部分をクリア
+        if (previousPortalMessage != message)
+        {
+            // WiFi情報とカウントダウン以外のエリアをクリア（秒数部分は別で処理）
+            tft.fillRect(0, 40, SCREEN_WIDTH, SCREEN_HEIGHT - 50, TFT_BLACK);
+            previousPortalMessage = message;
+        }
+
+        // メッセージの行を分割して色分けして表示する
+        int currentY = 50;
+        int lastPos = 0;
+        int pos = message.indexOf('\n');
+
+        while (pos >= 0 || lastPos < message.length())
+        {
+            String line = pos >= 0 ? message.substring(lastPos, pos) : message.substring(lastPos);
+
+            // SSIDの行
+            if (line.startsWith("SSID:"))
+            {
+                // "SSID: " の部分をハイライト色で
+                tft.setTextColor(SPLATOON_YELLOW);
+                tft.setTextSize(1);
+                tft.setCursor(40, currentY);
+                tft.print("SSID: ");
+
+                // 実際のSSID値を別の色で
+                tft.setTextColor(TFT_WHITE);
+                tft.print(line.substring(6)); // "SSID: " の後の部分
+            }
+            // IPの行
+            else if (line.startsWith("IP:"))
+            {
+                // "IP: " の部分をハイライト色で
+                tft.setTextColor(SPLATOON_YELLOW);
+                tft.setTextSize(1);
+                tft.setCursor(40, currentY);
+                tft.print("IP: ");
+
+                // 実際のIP値を別の色で
+                tft.setTextColor(TFT_WHITE);
+                tft.print(line.substring(4)); // "IP: " の後の部分
+            }
+            // カウントダウンの行
+            else if (line.indexOf("Connecting in ") >= 0)
+            {
+                int numPos = line.indexOf("Connecting in ") + 14;
+                int secPos = line.indexOf("s...");
+
+                // "Connecting in " の部分
+                tft.setTextColor(SPLATOON_PINK);
+                tft.setTextSize(1);
+                tft.setCursor(40, currentY);
+                tft.print("Connecting in ");
+
+                // 秒数文字列の開始位置を記録
+                int secondsPosX = tft.getCursorX();
+                int secondsPosY = tft.getCursorY();
+
+                // 秒数を表示
+                if (secPos > numPos)
+                {
+                    // 前回表示された秒数部分だけをクリア
+                    if (lastSecondsValue.length() > 0)
+                    {
+                        // 前回の秒数表示領域をクリア
+                        int clearWidth = tft.textWidth(lastSecondsValue);
+                        tft.fillRect(lastSecondsPosX, lastSecondsPosY, clearWidth, 10, TFT_BLACK);
+                    }
+
+                    String seconds = line.substring(numPos, secPos);
+                    lastSecondsValue = seconds;    // 現在の値を保存
+                    lastSecondsPosX = secondsPosX; // 現在の位置を保存
+                    lastSecondsPosY = secondsPosY;
+
+                    // 秒数を表示（通常サイズで）
+                    tft.setTextColor(TFT_WHITE);
+                    tft.print(seconds);
+
+                    // "s..." の部分
+                    tft.setTextColor(SPLATOON_PINK);
+                    tft.print("s...");
+                }
+                else
+                {
+                    // 秒数が抽出できない場合は通常どおり表示
+                    tft.print(line.substring(numPos));
+                }
+            }
+            // その他のメッセージ
+            else
+            {
+                tft.setTextColor(connected ? SPLATOON_GREEN : SPLATOON_PINK);
+                tft.setTextSize(1);
+                tft.setCursor(40, currentY);
+                tft.println(line);
+            }
+
+            // 次の行へ
+            currentY += 20;
+
+            if (pos >= 0)
+            {
+                lastPos = pos + 1;
+                pos = message.indexOf('\n', lastPos);
+            }
+            else
+            {
+                break;
+            }
+        }
     }
 
     void TFTDisplayService::showLoadingMessage(const char *message)
     {
         clearScreen();
+
+        // 上部に背景色のヘッダーを表示
+        tft.fillRect(0, 0, SCREEN_WIDTH, 30, SPLATOON_BLUE);
+
+        // ヘッダーにタイトルを表示
         tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(2);
+        tft.setCursor(80, 5);
+        tft.println("Loading...");
+
+        // メッセージを表示
+        tft.setTextColor(SPLATOON_YELLOW);
         tft.setTextSize(1);
-        tft.setCursor(50, 150);
+        tft.setCursor(40, 50);
         tft.println(message);
+
+        // 進捗バーの背景
+        tft.fillRect(40, 80, SCREEN_WIDTH - 80, 20, TFT_DARKGREY);
+
+        // カラフルな進捗バー
+        int loadWidth = (SCREEN_WIDTH - 80) / 4;
+        tft.fillRect(40, 80, loadWidth, 20, SPLATOON_BLUE);
+        tft.fillRect(40 + loadWidth, 80, loadWidth, 20, SPLATOON_ORANGE);
+        tft.fillRect(40 + loadWidth * 2, 80, loadWidth, 20, SPLATOON_GREEN);
+        tft.fillRect(40 + loadWidth * 3, 80, loadWidth, 20, SPLATOON_PINK);
+
+        // ステータスメッセージ
+        tft.setTextColor(SPLATOON_GREEN);
+        tft.setTextSize(1);
+        tft.setCursor(25, 130);
+        tft.println("Getting latest Splatoon3 information...");
     }
 
     void TFTDisplayService::drawBattleQuadrant(
