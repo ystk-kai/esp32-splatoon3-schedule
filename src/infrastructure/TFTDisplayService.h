@@ -120,6 +120,9 @@ namespace Infrastructure
         // Show loading message
         void showLoadingMessage(const char *message) override;
 
+        // Show loading message with background update mode option
+        void showLoadingMessage(const char *message, bool backgroundUpdate) override;
+
         // Update time display at bottom of screen
         void updateTimeDisplay() override
         {

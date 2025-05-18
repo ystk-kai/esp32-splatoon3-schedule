@@ -414,7 +414,15 @@ namespace Infrastructure
         }
     }
 
+    // オリジナルのshowLoadingMessage: 後方互換性のために残します
     void TFTDisplayService::showLoadingMessage(const char *message)
+    {
+        // デフォルトでは背景更新モードではない（フルスクリーンロード表示）
+        showLoadingMessage(message, false);
+    }
+
+    // バックグラウンド更新に対応したshowLoadingMessage
+    void TFTDisplayService::showLoadingMessage(const char *message, bool backgroundUpdate)
     {
         // 現在の反転状態を保存
         bool currentInverted = isInverted;
@@ -425,38 +433,57 @@ namespace Infrastructure
             tft.invertDisplay(false);
         }
 
-        clearScreen();
+        if (!backgroundUpdate)
+        {
+            // 通常のロード画面（フルスクリーン）
+            clearScreen();
 
-        // 上部に背景色のヘッダーを表示
-        tft.fillRect(0, 0, SCREEN_WIDTH, 30, SPLATOON_BLUE);
+            // 上部に背景色のヘッダーを表示
+            tft.fillRect(0, 0, SCREEN_WIDTH, 30, SPLATOON_BLUE);
 
-        // ヘッダーにタイトルを表示
-        tft.setTextColor(TFT_WHITE);
-        tft.setTextSize(2);
-        tft.setCursor(80, 5);
-        tft.println("Loading...");
+            // ヘッダーにタイトルを表示
+            tft.setTextColor(TFT_WHITE);
+            tft.setTextSize(2);
+            tft.setCursor(80, 5);
+            tft.println("Loading...");
 
-        // メッセージを表示
-        tft.setTextColor(SPLATOON_YELLOW);
-        tft.setTextSize(1);
-        tft.setCursor(40, 50);
-        tft.println(message);
+            // メッセージを表示
+            tft.setTextColor(SPLATOON_YELLOW);
+            tft.setTextSize(1);
+            tft.setCursor(40, 50);
+            tft.println(message);
 
-        // 進捗バーの背景
-        tft.fillRect(40, 80, SCREEN_WIDTH - 80, 20, TFT_DARKGREY);
+            // 進捗バーの背景
+            tft.fillRect(40, 80, SCREEN_WIDTH - 80, 20, TFT_DARKGREY);
 
-        // カラフルな進捗バー
-        int loadWidth = (SCREEN_WIDTH - 80) / 4;
-        tft.fillRect(40, 80, loadWidth, 20, SPLATOON_BLUE);
-        tft.fillRect(40 + loadWidth, 80, loadWidth, 20, SPLATOON_ORANGE);
-        tft.fillRect(40 + loadWidth * 2, 80, loadWidth, 20, SPLATOON_GREEN);
-        tft.fillRect(40 + loadWidth * 3, 80, loadWidth, 20, SPLATOON_PINK);
+            // カラフルな進捗バー
+            int loadWidth = (SCREEN_WIDTH - 80) / 4;
+            tft.fillRect(40, 80, loadWidth, 20, SPLATOON_BLUE);
+            tft.fillRect(40 + loadWidth, 80, loadWidth, 20, SPLATOON_ORANGE);
+            tft.fillRect(40 + loadWidth * 2, 80, loadWidth, 20, SPLATOON_GREEN);
+            tft.fillRect(40 + loadWidth * 3, 80, loadWidth, 20, SPLATOON_PINK);
 
-        // ステータスメッセージ
-        tft.setTextColor(SPLATOON_GREEN);
-        tft.setTextSize(1);
-        tft.setCursor(25, 130);
-        tft.println("Getting latest Splatoon3 information...");
+            // ステータスメッセージ
+            tft.setTextColor(SPLATOON_GREEN);
+            tft.setTextSize(1);
+            tft.setCursor(25, 130);
+            tft.println("Getting latest Splatoon3 information...");
+        }
+        else
+        {
+            // バックグラウンド更新モード - 最小限の視覚的な変更だけ行う
+            // 下部情報バーに更新インジケータを表示（小さな点滅ドット）
+            static bool blinkState = false;
+            blinkState = !blinkState;
+
+            // 画面下部の右端に小さな更新インジケータを表示
+            uint16_t indicatorColor = blinkState ? SPLATOON_GREEN : SPLATOON_BLUE;
+            tft.fillCircle(SCREEN_WIDTH - 10, SCREEN_HEIGHT - 10, 3, indicatorColor);
+
+            // シリアルログにのみ更新状態を出力
+            Serial.print("Background updating: ");
+            Serial.println(message);
+        }
 
         // 反転状態を復元
         if (currentInverted)

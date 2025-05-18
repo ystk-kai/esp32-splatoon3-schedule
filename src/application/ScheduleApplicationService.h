@@ -45,8 +45,8 @@ namespace Application
                 // Configure time service
                 networkService.configureTimeService();
 
-                // Initial data fetch
-                displayService.showLoadingMessage("Fetching data...");
+                // Initial data fetch - 初回データ取得なのでフルスクリーン表示
+                displayService.showLoadingMessage("Fetching data...", false);
                 scheduleService.updateAllSchedules();
 
                 // Update display
@@ -85,8 +85,8 @@ namespace Application
             // Configure time service
             networkService.configureTimeService();
 
-            // Initial data fetch
-            displayService.showLoadingMessage("Fetching data...");
+            // Initial data fetch - 初回データ取得なのでフルスクリーン表示
+            displayService.showLoadingMessage("Fetching data...", false);
             scheduleService.updateAllSchedules();
 
             // Update display
@@ -98,6 +98,9 @@ namespace Application
         // Update all schedule data and refresh display
         void updateAllData()
         {
+            // アプリケーションが初期化済みの場合はバックグラウンド更新を使用
+            displayService.showLoadingMessage("Updating data...", true);
+
             // Update all schedule data
             scheduleService.updateAllSchedules();
 

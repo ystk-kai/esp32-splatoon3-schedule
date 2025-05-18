@@ -65,6 +65,9 @@ namespace Application
         // Show loading message
         virtual void showLoadingMessage(const char *message) = 0;
 
+        // Show loading message with background update mode option
+        virtual void showLoadingMessage(const char *message, bool backgroundUpdate) = 0;
+
         // Update time display at bottom of screen
         virtual void updateTimeDisplay() = 0;
 

@@ -124,7 +124,7 @@ namespace Domain
         case Type::RAINMAKER:
             return 0xFE60; // Gold/Yellow
         case Type::CLAM_BLITZ:
-            return 0x0BE0; // Olive Green
+            return 0xF980; // Red-Orange
         default:
             return 0xFFFF; // White
         }

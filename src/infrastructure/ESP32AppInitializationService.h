@@ -112,7 +112,8 @@ namespace Infrastructure
                 if (currentMillis - appStateManager.getLastDataUpdateTime() >= appStateManager.getDataUpdateInterval())
                 {
                     Serial.println("Updating all schedule data...");
-                    displayService.showLoadingMessage("Updating data...");
+                    // アプリが初期化済みの場合、バックグラウンド更新モードを使用する
+                    displayService.showLoadingMessage("Updating data...", true);
                     appStateManager.setIsDataFetching(true);
                     applicationService.updateAllData();
                     appStateManager.setIsDataFetching(false);
@@ -187,7 +188,7 @@ namespace Infrastructure
             networkService.configureTimeService();
 
             // 初期データ取得前の通知
-            displayService.showLoadingMessage("Fetching data...");
+            displayService.showLoadingMessage("Fetching data...", false);
             appStateManager.setIsDataFetching(true);
 
             Serial.println("Application initialization started");
