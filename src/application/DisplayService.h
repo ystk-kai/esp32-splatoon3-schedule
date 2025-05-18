@@ -34,6 +34,9 @@ namespace Application
         // 画面の反転状態を取得する
         virtual bool getInvertStatus() = 0;
 
+        // 表示状態をリセットする
+        virtual void resetDisplayState() = 0;
+
         // Update the entire screen with all schedule data
         virtual void updateScreen(
             const Domain::BattleSchedule &regularSchedule,
