@@ -101,6 +101,38 @@ namespace Infrastructure
         return true;
     }
 
+    // 画面反転設定をロードする
+    bool ESP32WiFiService::loadInvertedDisplaySetting(bool &inverted)
+    {
+        // 明示的に名前空間を指定して一貫性を確保
+        preferences.begin("splatoon3", true); // 読み取り専用モード
+
+        // 反転設定を読み込む
+        inverted = preferences.getBool("inv_disp", false);
+
+        Serial.print("反転表示設定を読み込み: ");
+        Serial.println(inverted ? "有効" : "無効");
+
+        preferences.end();
+        return true;
+    }
+
+    // 画面反転設定を保存する
+    bool ESP32WiFiService::saveInvertedDisplaySetting(bool inverted)
+    {
+        Serial.print("反転表示設定を保存: ");
+        Serial.println(inverted ? "有効" : "無効");
+
+        // 明示的に名前空間を指定して一貫性を確保
+        preferences.begin("splatoon3", false); // 書き込みモード
+
+        // 反転設定を保存
+        bool result = preferences.putBool("inv_disp", inverted);
+
+        preferences.end();
+        return result;
+    }
+
     // WiFi設定を保存する
     bool ESP32WiFiService::saveSettings(const Domain::WiFiSettings &settings)
     {
@@ -217,6 +249,10 @@ namespace Infrastructure
 
         Serial.println("キャプティブポータルを停止します");
 
+        // ポータル接続検出フラグも必ずリセット
+        portalConnectionDetected = false;
+        Serial.println("ポータル接続検出フラグもリセットします");
+
         // DNSサーバーを停止
         dnsServer.stop();
 
@@ -247,16 +283,21 @@ namespace Infrastructure
         {
             Serial.println("キャプティブポータルを停止し、WiFi接続を開始します");
             stopCaptivePortal();
-            delay(500); // 停止処理の完了を待つ
+            delay(1000); // 停止処理の完了を待つ時間を長めに
         }
 
-        // WiFiモードをSTAに設定
+        // WiFiモードを明示的にSTAに設定
         WiFi.mode(WIFI_STA);
-        delay(100);
+        delay(500); // WiFiモード変更の安定化を待つ
 
         // 接続する前にWiFiを切断して設定をクリア
         WiFi.disconnect(true);
-        delay(500);
+        delay(1000); // 切断の完了を十分待つ
+
+        // 自動再接続を有効に設定
+        WiFi.setAutoReconnect(true);
+        WiFi.persistent(true);
+        delay(200);
 
         // 静的IP設定（必要な場合）
         if (!settings.getDhcp())
@@ -319,11 +360,32 @@ namespace Infrastructure
         lastConnectionAttempt = millis();
         state = WiFiState::CONNECTING;
 
-        // 接続試行の開始後、少し待機して状態を確認
-        delay(500);
+        // 接続試行の開始後、十分に待機して接続を確認
+        Serial.println("接続の確立を待機中...");
 
-        // すぐに接続ステータスをチェック（成功しない可能性が高い）
-        return connectToWiFi(settings);
+        // 接続の成功を最大5秒間待機（一般的なWiFi接続は数秒で完了する）
+        int attempts = 0;
+        while (attempts < 10 && WiFi.status() != WL_CONNECTED)
+        {
+            delay(500);
+            Serial.print(".");
+            attempts++;
+        }
+        Serial.println();
+
+        // 接続状態の最終確認
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            Serial.println("WiFi接続に成功しました");
+            Serial.print("IP: ");
+            Serial.println(WiFi.localIP());
+            state = WiFiState::CONNECTED;
+            return true;
+        }
+
+        // この時点では接続は進行中または失敗
+        Serial.println("接続待機後もWiFi接続できていません。接続プロセスを継続します...");
+        return false;
     }
 
     // WiFiの接続状態を確認する
@@ -341,6 +403,22 @@ namespace Infrastructure
     // WiFi接続プロセスを処理する（メインループで呼び出す）
     void ESP32WiFiService::process()
     {
+        // 設定保存後の再起動処理を最初にチェック - 優先順位を最高に
+        if (settingsSaved && millis() - settingsSaveTime >= 5000)
+        {
+            // 5秒経過したら再起動
+            Serial.println("設定保存から5秒経過しました。再起動します...");
+
+            // キャプティブポータルを停止し、WiFiも切断
+            stopCaptivePortal();
+            WiFi.disconnect(true);
+
+            delay(1000);   // 安定化のために少し長く待機
+            ESP.restart(); // ESP32を再起動
+            delay(5000);   // 再起動完了を待機（念のため）
+            return;        // 念のため
+        }
+
         // 現在の状態に基づいて処理
         switch (state)
         {
@@ -353,6 +431,7 @@ namespace Infrastructure
                 Serial.print("IP: ");
                 Serial.println(WiFi.localIP());
                 state = WiFiState::CONNECTED;
+                lastConnectionAttempt = 0; // タイムアウトカウンターをリセット
             }
             else if (millis() - lastConnectionAttempt > connectionTimeout)
             {
@@ -433,6 +512,7 @@ namespace Infrastructure
 
         // この時点では接続は進行中
         Serial.println("WiFi接続を試行中...");
+        state = WiFiState::CONNECTING; // 状態を明示的に設定
         return false;
     }
 
@@ -449,7 +529,7 @@ namespace Infrastructure
         webServer.on("/scan", HTTP_GET, [this]()
                      {
             Serial.println("スキャンAPIが呼び出されました");
-            String result = this->getWiFiScanJson(); });
+            this->getWiFiScanJson(); });
 
         // 設定取得API
         webServer.on("/settings", HTTP_GET, [this]()
@@ -484,13 +564,14 @@ namespace Infrastructure
     {
         // 404ページへのアクセスも検出
         portalConnectionDetected = true;
+        Serial.println("未登録のパスへのリクエストをリダイレクト: " + webServer.uri());
 
         webServer.sendHeader("Location", "/", true);
         webServer.send(302, "text/plain", "");
     }
 
     // WiFiスキャン結果をJSONで返す
-    String ESP32WiFiService::getWiFiScanJson()
+    void ESP32WiFiService::getWiFiScanJson()
     {
         // WiFiスキャンAPIへのアクセスを検出
         portalConnectionDetected = true;
@@ -553,8 +634,6 @@ namespace Infrastructure
 
         // スキャン結果をクリーンアップ
         WiFi.scanDelete();
-
-        return json;
     }
 
     // 設定情報をJSON形式で返す
@@ -563,6 +642,10 @@ namespace Infrastructure
         // 表示設定情報の取得
         Domain::DisplaySettings displaySettings = Domain::DisplaySettings::createDefault();
         loadDisplaySettings(displaySettings);
+
+        // 画面反転設定の取得
+        bool invertedDisplay = false;
+        loadInvertedDisplaySetting(invertedDisplay);
 
         // WiFi設定情報の取得
         Domain::WiFiSettings wifiSettings;
@@ -602,15 +685,33 @@ namespace Infrastructure
 
         // 表示設定のJSON部分を構築
         String displayJson = "\"display\":{";
+        // ローマ字設定: true=ローマ字表示、false=英語表示
         displayJson += "\"battle_romaji\":" + String(displaySettings.isUseRomajiForBattleType() ? "true" : "false") + ",";
         displayJson += "\"rule_romaji\":" + String(displaySettings.isUseRomajiForRule() ? "true" : "false") + ",";
-        displayJson += "\"stage_romaji\":" + String(displaySettings.isUseRomajiForStage() ? "true" : "false");
+        displayJson += "\"stage_romaji\":" + String(displaySettings.isUseRomajiForStage() ? "true" : "false") + ",";
+        // 画面反転設定: true=反転表示、false=通常表示
+        displayJson += "\"inverted_display\":" + String(invertedDisplay ? "true" : "false");
         displayJson += "}";
 
         // 全体のJSONを構築
         String json = "{" + displayJson + "," + wifiJson + "}";
 
         Serial.println("設定情報を返します: " + json);
+
+        // 画面反転設定値が正しくJSONに含まれているか確認
+        if (json.indexOf("\"inverted_display\":true") >= 0)
+        {
+            Serial.println("JSON内の画面反転設定: 有効(true)");
+        }
+        else if (json.indexOf("\"inverted_display\":false") >= 0)
+        {
+            Serial.println("JSON内の画面反転設定: 無効(false)");
+        }
+        else
+        {
+            Serial.println("警告: JSON内に画面反転設定が見つかりません");
+        }
+
         webServer.send(200, "application/json", json);
     }
 
@@ -677,7 +778,17 @@ namespace Infrastructure
             webServer.arg("battle_romaji") == "1",
             webServer.arg("rule_romaji") == "1",
             webServer.arg("stage_romaji") == "1");
-        saveDisplaySettings(displaySettings);
+        bool displaySaved = saveDisplaySettings(displaySettings);
+        Serial.print("表示設定の保存結果: ");
+        Serial.println(displaySaved ? "成功" : "失敗");
+
+        // 画面反転設定を保存（重要なので成功確認を追加）
+        bool invertedDisplay = webServer.arg("inverted_display") == "1";
+        bool invertSaved = saveInvertedDisplaySetting(invertedDisplay);
+        Serial.print("画面反転設定: ");
+        Serial.println(invertedDisplay ? "有効" : "無効");
+        Serial.print("画面反転設定の保存結果: ");
+        Serial.println(invertSaved ? "成功" : "失敗");
 
         // WiFi設定を保存
         bool saveResult = saveSettings(settings);
@@ -698,18 +809,17 @@ namespace Infrastructure
             webServer.send(200, "text/plain", "設定を保存しました");
             Serial.println("設定を保存しました。クライアントにレスポンスを送信しています...");
 
-            // 確実にレスポンスが送信されるまで待機
-            delay(300);
-            webServer.client().flush();
-            delay(200);
+            // ポータル接続検出フラグをtrueに維持して「設定中」表示を継続
+            portalConnectionDetected = true;
 
-            // 少し待機してから再起動
-            Serial.println("1秒後に再起動します...");
-            delay(1000);
+            // 保存完了後ユーザーに通知
+            Serial.println("WiFi設定を保存しました。設定中画面を維持しています。");
+            Serial.println("設定保存に成功したため、5秒後に再起動します...");
 
-            // 再起動の直前にもう一度ログを出力
-            Serial.println("再起動します！");
-            ESP.restart();
+            // 設定保存フラグとタイマーをセット - process()メソッドで検出します
+            settingsSaved = true;
+            settingsSaveTime = millis();
+            skipLogging = false; // ログ抑制フラグをリセット
         }
         else
         {
@@ -721,8 +831,86 @@ namespace Infrastructure
     // キャプティブポータルへの接続があったかどうかを確認する
     bool ESP32WiFiService::hasPortalConnections()
     {
-        // 接続があった場合はtrue、なかった場合はfalse
-        return portalConnectionDetected;
+        // キャプティブポータル自体が無効になっている場合は接続もないはず
+        if (!captivePortalActive)
+        {
+            // 念のためフラグもリセット
+            if (portalConnectionDetected)
+            {
+                Serial.println("ポータルが非アクティブなのでportalConnectionDetectedをリセットします");
+                portalConnectionDetected = false;
+            }
+            return false;
+        }
+
+        // WiFi接続状態よりもポータル接続状態を優先する
+        // portalConnectionDetectedがtrueの場合はそれを優先して接続ありと判定
+        if (portalConnectionDetected)
+        {
+            // ポータルで設定保存後は設定処理中の状態を維持する
+            // これにより再起動まで「設定中...」表示を維持できる
+            if (settingsSaved)
+            {
+                // 設定保存後は常に接続中と判定
+                if (!skipLogging)
+                {
+                    Serial.println("設定保存済みのため、portalConnectionDetected を維持します");
+                    skipLogging = true; // ログが繰り返し出力されるのを防止
+                }
+                return true;
+            }
+
+            // アクティブなクライアント接続があるか確認
+            bool hasActiveClient = webServer.client();
+
+            if (hasActiveClient)
+            {
+                // ログスパムを防止
+                static bool activeLogPrinted = false;
+                if (!activeLogPrinted)
+                {
+                    Serial.println("WebServerにアクティブな接続があります - portalConnectionDetected を維持します");
+                    activeLogPrinted = true;
+                }
+                return true;
+            }
+            else
+            {
+                // クライアント接続がない場合でも、フラグを維持
+                // これによりブラウザを閉じても「設定中...」表示が継続
+                return true;
+            }
+        }
+
+        // 接続が検出されていない場合は、WebServerのクライアント接続を確認
+        bool hasActiveClient = webServer.client();
+
+        // アクティブなクライアント接続がある場合はポータル接続ありと判定
+        if (hasActiveClient)
+        {
+            // 接続を検出したらフラグを設定
+            portalConnectionDetected = true;
+
+            // ログが繰り返し出力されるのを防止
+            static bool detectionLogPrinted = false;
+            if (!detectionLogPrinted)
+            {
+                Serial.println("WebServerに新規の接続を検出しました - portalConnectionDetected = true");
+                Serial.println("【ポータル接続状態変化】: false → true");
+                detectionLogPrinted = true;
+            }
+            return true;
+        }
+
+        // クライアント接続がない場合はfalseを返す
+        return false;
+    }
+
+    // キャプティブポータルの接続検出フラグをリセットする
+    void ESP32WiFiService::resetPortalConnectionDetected()
+    {
+        portalConnectionDetected = false;
+        Serial.println("ポータル接続検出フラグをリセットしました");
     }
 
 } // namespace Infrastructure

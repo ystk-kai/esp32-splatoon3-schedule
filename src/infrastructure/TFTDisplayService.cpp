@@ -19,6 +19,9 @@ namespace Infrastructure
         const char *lastUpdateTime,
         const Domain::DisplaySettings &displaySettings)
     {
+        // 現在の反転状態を保存
+        bool currentInverted = isInverted;
+
         // Clear screen
         clearScreen();
 
@@ -37,12 +40,21 @@ namespace Infrastructure
 
         // Update bottom info (current date/time and update time)
         updateBottomInfo(currentDateTime, lastUpdateTime);
+
+        // 反転状態を復元
+        if (currentInverted)
+        {
+            tft.invertDisplay(true);
+        }
     }
 
     void TFTDisplayService::updateBottomInfo(
         const char *currentDateTime,
         const char *lastUpdateTime)
     {
+        // 現在の反転状態を保存
+        bool currentInverted = isInverted;
+
         // Clear the bottom info area
         tft.fillRect(0, SCREEN_HEIGHT - 12, SCREEN_WIDTH, 12, TFT_BLACK);
 
@@ -62,10 +74,25 @@ namespace Infrastructure
 
         // Redraw any dividing line that crosses the bottom info area
         tft.drawLine(QUADRANT_WIDTH, SCREEN_HEIGHT - 12, QUADRANT_WIDTH, SCREEN_HEIGHT, TFT_WHITE);
+
+        // 反転状態を復元
+        if (currentInverted)
+        {
+            tft.invertDisplay(true);
+        }
     }
 
     void TFTDisplayService::showStartupScreen()
     {
+        // 現在の反転状態を保存
+        bool currentInverted = isInverted;
+
+        // 一時的に反転を無効化して描画
+        if (currentInverted)
+        {
+            tft.invertDisplay(false);
+        }
+
         clearScreen();
 
         // 画面上半分に背景色を設定
@@ -96,10 +123,19 @@ namespace Infrastructure
         tft.setTextColor(TFT_LIGHTGREY);
         tft.setCursor(SCREEN_WIDTH - 70, SCREEN_HEIGHT - 20);
         tft.println("v1.1.0");
+
+        // 反転状態を復元
+        if (currentInverted)
+        {
+            tft.invertDisplay(true);
+        }
     }
 
     void TFTDisplayService::showConnectionStatus(bool connected, const char *statusMessage)
     {
+        // 現在の反転状態を保存（リソース変数として使用）
+        bool currentInverted = isInverted;
+
         // 初回表示かどうかを判断するための静的変数
         static String previousPortalMessage = "";
 
@@ -108,9 +144,74 @@ namespace Infrastructure
         static int lastSecondsPosY = 0;
         static String lastSecondsValue = "";
 
+        // 前回のconnected状態を記録
+        static bool previousConnected = false;
+
+        // メッセージを文字列に変換
+        String message = String(statusMessage);
+
+        // すでに接続済みの"Connection OK"画面が表示されている場合は、
+        // 同じ接続状態で同様のメッセージ内容であれば更新をスキップ
+        if (!isFirstStatusCall && previousConnected == connected && connected == true)
+        {
+            // 接続済み状態の場合はメッセージが"Connection OK"で始まるかチェック
+            if (previousPortalMessage.startsWith("Connection OK") && message.startsWith("Connection OK"))
+            {
+                // 基本的には更新せず、SSID部分と IP部分が一致するかだけチェック
+                int prevSSIDPos = previousPortalMessage.indexOf("SSID: ");
+                int newSSIDPos = message.indexOf("SSID: ");
+
+                if (prevSSIDPos >= 0 && newSSIDPos >= 0)
+                {
+                    // 前回のSSIDと今回のSSIDが同じなら更新しない
+                    String prevSSIDLine = previousPortalMessage.substring(prevSSIDPos, previousPortalMessage.indexOf("\n", prevSSIDPos));
+                    String newSSIDLine = message.substring(newSSIDPos, message.indexOf("\n", newSSIDPos));
+
+                    if (prevSSIDLine == newSSIDLine)
+                    {
+                        return;
+                    }
+                }
+            }
+        }
+
+        // メッセージが全く同じで接続状態も同じなら何もしない（不要な再描画を防止）
+        if (!isFirstStatusCall && previousPortalMessage == message && previousConnected == connected)
+        {
+            return;
+        }
+
+        // カウントダウン秒数のみの変更かどうかを判断
+        bool onlySecondsChanged = false;
+        if (previousPortalMessage.length() > 0 && message.length() > 0)
+        {
+            // 両方のメッセージにカウントダウンが含まれているか確認
+            int prevConnPos = previousPortalMessage.indexOf("Connecting in ");
+            int newConnPos = message.indexOf("Connecting in ");
+
+            if (prevConnPos >= 0 && newConnPos >= 0)
+            {
+                // メッセージの先頭部分（カウントダウン前まで）が同じか確認
+                String prevPrefix = previousPortalMessage.substring(0, prevConnPos + 13); // "Connecting in "の手前まで
+                String newPrefix = message.substring(0, newConnPos + 13);
+
+                if (prevPrefix == newPrefix)
+                {
+                    // メッセージの基本部分が一致→秒数だけの変更と判断
+                    onlySecondsChanged = true;
+                }
+            }
+        }
+
         // 初回呼び出し時のみ画面をクリアして背景やヘッダーを描画
         if (isFirstStatusCall)
         {
+            // 初回時には一時的に反転を無効化して描画（見やすさのため）
+            if (currentInverted)
+            {
+                tft.invertDisplay(false);
+            }
+
             clearScreen();
 
             // 上部に背景色のヘッダーを表示
@@ -126,17 +227,72 @@ namespace Infrastructure
             tft.fillRect(0, SCREEN_HEIGHT - 10, SCREEN_WIDTH, 10, connected ? SPLATOON_GREEN : SPLATOON_ORANGE);
 
             isFirstStatusCall = false;
-            previousPortalMessage = ""; // メッセージもリセット
+            previousPortalMessage = "";    // メッセージもリセット
+            previousConnected = connected; // 接続状態を記録
+
+            // 初回表示後、反転状態を復元
+            if (currentInverted)
+            {
+                tft.invertDisplay(true);
+            }
+        }
+        // 接続状態が変わった場合はヘッダーを再描画
+        else if (previousConnected != connected)
+        {
+            // 反転状態に影響しないように一時的に元に戻す
+            bool needRestore = false;
+            if (currentInverted)
+            {
+                tft.invertDisplay(false);
+                needRestore = true;
+            }
+
+            // ヘッダー部分のみ更新
+            tft.fillRect(0, 0, SCREEN_WIDTH, 30, connected ? SPLATOON_GREEN : SPLATOON_ORANGE);
+            tft.setTextColor(TFT_BLACK);
+            tft.setTextSize(2);
+            tft.setCursor(40, 5);
+            tft.println(connected ? "Connection OK" : "WiFi Setup");
+
+            // 画面下部の装飾も更新
+            tft.fillRect(0, SCREEN_HEIGHT - 10, SCREEN_WIDTH, 10, connected ? SPLATOON_GREEN : SPLATOON_ORANGE);
+
+            previousConnected = connected; // 接続状態を更新
+
+            // 反転状態を元に戻す（必要な場合のみ）
+            if (needRestore)
+            {
+                tft.invertDisplay(true);
+            }
         }
 
-        String message = String(statusMessage);
-
-        // メインメッセージ部分が変わった場合のみその部分をクリア
-        if (previousPortalMessage != message)
+        // メインメッセージ部分が変わった場合かつ秒数だけの変更でない場合はその部分をクリア
+        if (previousPortalMessage != message && !onlySecondsChanged)
         {
+            // 反転状態に影響しないように一時的に元に戻す
+            bool needRestore = false;
+            if (currentInverted)
+            {
+                tft.invertDisplay(false);
+                needRestore = true;
+            }
+
             // WiFi情報とカウントダウン以外のエリアをクリア（秒数部分は別で処理）
             tft.fillRect(0, 40, SCREEN_WIDTH, SCREEN_HEIGHT - 50, TFT_BLACK);
-            previousPortalMessage = message;
+
+            // 反転状態を元に戻す（必要な場合のみ）
+            if (needRestore)
+            {
+                tft.invertDisplay(true);
+            }
+        }
+
+        // 秒数だけの更新の場合、反転処理は一切省略
+        bool needRestoreForText = false;
+        if (!onlySecondsChanged && currentInverted)
+        {
+            tft.invertDisplay(false);
+            needRestoreForText = true;
         }
 
         // メッセージの行を分割して色分けして表示する
@@ -180,43 +336,48 @@ namespace Infrastructure
                 int numPos = line.indexOf("Connecting in ") + 14;
                 int secPos = line.indexOf("s...");
 
-                // "Connecting in " の部分
-                tft.setTextColor(SPLATOON_PINK);
-                tft.setTextSize(1);
-                tft.setCursor(40, currentY);
-                tft.print("Connecting in ");
-
-                // 秒数文字列の開始位置を記録
-                int secondsPosX = tft.getCursorX();
-                int secondsPosY = tft.getCursorY();
-
                 // 秒数を表示
                 if (secPos > numPos)
                 {
-                    // 前回表示された秒数部分だけをクリア
-                    if (lastSecondsValue.length() > 0)
-                    {
-                        // 前回の秒数表示領域をクリア
-                        int clearWidth = tft.textWidth(lastSecondsValue);
-                        tft.fillRect(lastSecondsPosX, lastSecondsPosY, clearWidth, 10, TFT_BLACK);
-                    }
-
+                    // 秒数部分の更新処理
                     String seconds = line.substring(numPos, secPos);
-                    lastSecondsValue = seconds;    // 現在の値を保存
-                    lastSecondsPosX = secondsPosX; // 現在の位置を保存
-                    lastSecondsPosY = secondsPosY;
 
-                    // 秒数を表示（通常サイズで）
-                    tft.setTextColor(TFT_WHITE);
-                    tft.print(seconds);
+                    // 秒数が変わった場合だけ更新
+                    if (seconds != lastSecondsValue || !onlySecondsChanged)
+                    {
+                        // カウントダウン行全体をクリア
+                        tft.fillRect(40, currentY, SCREEN_WIDTH - 80, 10, TFT_BLACK);
 
-                    // "s..." の部分
-                    tft.setTextColor(SPLATOON_PINK);
-                    tft.print("s...");
+                        // "Connecting in " の部分を再描画
+                        tft.setTextColor(SPLATOON_PINK);
+                        tft.setTextSize(1);
+                        tft.setCursor(40, currentY);
+                        tft.print("Connecting in ");
+
+                        // 秒数文字列の開始位置を記録
+                        int secondsPosX = tft.getCursorX();
+                        int secondsPosY = tft.getCursorY();
+
+                        lastSecondsValue = seconds;    // 現在の値を保存
+                        lastSecondsPosX = secondsPosX; // 現在の位置を保存
+                        lastSecondsPosY = secondsPosY;
+
+                        // 秒数を表示（通常サイズで）
+                        tft.setTextColor(TFT_WHITE);
+                        tft.print(seconds);
+
+                        // "s..." の部分
+                        tft.setTextColor(SPLATOON_PINK);
+                        tft.print("s...");
+                    }
                 }
                 else
                 {
                     // 秒数が抽出できない場合は通常どおり表示
+                    tft.setTextColor(SPLATOON_PINK);
+                    tft.setTextSize(1);
+                    tft.setCursor(40, currentY);
+                    tft.print("Connecting in ");
                     tft.print(line.substring(numPos));
                 }
             }
@@ -242,10 +403,28 @@ namespace Infrastructure
                 break;
             }
         }
+
+        // メッセージを保存（次回比較用）
+        previousPortalMessage = message;
+
+        // 反転状態を元に戻す（必要な場合のみ）
+        if (needRestoreForText)
+        {
+            tft.invertDisplay(true);
+        }
     }
 
     void TFTDisplayService::showLoadingMessage(const char *message)
     {
+        // 現在の反転状態を保存
+        bool currentInverted = isInverted;
+
+        // 一時的に反転を無効化して描画
+        if (currentInverted)
+        {
+            tft.invertDisplay(false);
+        }
+
         clearScreen();
 
         // 上部に背景色のヘッダーを表示
@@ -278,6 +457,12 @@ namespace Infrastructure
         tft.setTextSize(1);
         tft.setCursor(25, 130);
         tft.println("Getting latest Splatoon3 information...");
+
+        // 反転状態を復元
+        if (currentInverted)
+        {
+            tft.invertDisplay(true);
+        }
     }
 
     void TFTDisplayService::drawBattleQuadrant(
@@ -287,6 +472,15 @@ namespace Infrastructure
         const Domain::BattleSchedule &next,
         const Domain::DisplaySettings &displaySettings)
     {
+        // 現在の反転状態を保存
+        bool currentInverted = isInverted;
+
+        // 一時的に反転を無効化して描画
+        if (currentInverted)
+        {
+            tft.invertDisplay(false);
+        }
+
         // Get the battle type for title and color
         const Domain::BattleType &battleType = current.getBattleType();
         uint16_t titleColor = battleType.getColor();
@@ -306,6 +500,12 @@ namespace Infrastructure
             tft.setTextColor(TFT_RED);
             tft.setCursor(x + 4, y + 20);
             tft.println("Data Error");
+
+            // 反転状態を復元
+            if (currentInverted)
+            {
+                tft.invertDisplay(true);
+            }
             return;
         }
 
@@ -417,6 +617,12 @@ namespace Infrastructure
             strncpy(shortenedStage, nextStage2Name, 13);
             shortenedStage[13] = '\0';
             tft.println(shortenedStage);
+        }
+
+        // 反転状態を復元
+        if (currentInverted)
+        {
+            tft.invertDisplay(true);
         }
     }
 

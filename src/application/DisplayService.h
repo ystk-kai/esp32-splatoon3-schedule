@@ -25,6 +25,15 @@ namespace Application
         // Clear the display screen
         virtual void clearScreen() = 0;
 
+        // 画面の色を反転する
+        virtual void invertDisplay(bool invert) = 0;
+
+        // 画面が反転状態かどうかを切り替える
+        virtual void toggleInvertDisplay() = 0;
+
+        // 画面の反転状態を取得する
+        virtual bool getInvertStatus() = 0;
+
         // Update the entire screen with all schedule data
         virtual void updateScreen(
             const Domain::BattleSchedule &regularSchedule,

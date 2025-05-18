@@ -424,6 +424,12 @@ namespace Infrastructure
                             ステージを英語で表示
                         </label>
                     </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="inverted_display" name="inverted_display">
+                            画面の色を反転表示
+                        </label>
+                    </div>
                     <div class="form-group button-group">
                         <button type="button" id="english-button" class="setting-button">英語表示</button>
                         <button type="button" id="romaji-button" class="setting-button">ローマ字表示</button>
@@ -497,10 +503,20 @@ namespace Infrastructure
                         
                         // 表示設定の読み込み
                         if (data.display) {
-                            // チェックボックスの表示を逆転: trueなら英語表示(=チェック有)、falseならローマ字表示(=チェック無)
+                            console.log('表示設定を読み込みます:', data.display);
+                            // 言語設定: サーバーからtrueでローマ字表示、falseで英語表示
+                            // UIでは逆： チェックありが英語表示、チェックなしがローマ字表示
+                            // そのため値を反転させる
                             battleRomajiCheckbox.checked = !data.display.battle_romaji;
                             ruleRomajiCheckbox.checked = !data.display.rule_romaji;
                             stageRomajiCheckbox.checked = !data.display.stage_romaji;
+                            
+                            // 画面反転設定の読み込み - これは値をそのまま使用（反転しない）
+                            if (data.display.inverted_display !== undefined) {
+                                console.log('画面反転設定の読み込み:', data.display.inverted_display);
+                                document.getElementById('inverted_display').checked = data.display.inverted_display;
+                                console.log('画面反転チェックボックスの状態:', document.getElementById('inverted_display').checked);
+                            }
                         }
                         
                         // WiFi設定の読み込み
@@ -691,9 +707,16 @@ namespace Infrastructure
                 formData.append('dhcp', dhcpCheckbox.checked ? '1' : '0');
                 
                 // チェックボックスの値を反転して送信: チェックあり=英語表示=0、チェックなし=ローマ字表示=1
+                // 言語設定: UIではチェックONが英語表示、サーバー側ではfalseが英語表示なので値を反転
                 formData.append('battle_romaji', !battleRomajiCheckbox.checked ? '1' : '0');
                 formData.append('rule_romaji', !ruleRomajiCheckbox.checked ? '1' : '0');
                 formData.append('stage_romaji', !stageRomajiCheckbox.checked ? '1' : '0');
+                
+                // 画面反転設定 - 直接値を使用（反転しない）
+                const invertedDisplay = document.getElementById('inverted_display').checked;
+                console.log('画面反転設定の送信:', invertedDisplay ? '有効' : '無効');
+                console.log('送信する画面反転設定の値:', invertedDisplay ? '1' : '0');
+                formData.append('inverted_display', invertedDisplay ? '1' : '0');
 
                 if (!dhcpCheckbox.checked) {
                     formData.append('ip', document.getElementById('ip').value);
@@ -709,6 +732,15 @@ namespace Infrastructure
                     .join('&');
 
                 console.log('送信データ:', formBody);
+                
+                // 画面反転設定の値が送信データに含まれているか確認（デバッグ用）
+                if (formBody.includes('inverted_display=1')) {
+                    console.log('画面反転設定: 有効(1)が送信されます');
+                } else if (formBody.includes('inverted_display=0')) {
+                    console.log('画面反転設定: 無効(0)が送信されます');
+                } else {
+                    console.log('警告: 画面反転設定が送信データに含まれていません！');
+                }
 
                 // XMLHttpRequest を使用して同期的に送信（fetch APIより信頼性が高い場合がある）
                 const xhr = new XMLHttpRequest();

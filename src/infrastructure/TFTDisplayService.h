@@ -15,7 +15,11 @@ namespace Infrastructure
     {
     public:
         TFTDisplayService(uint8_t backlightPin, uint8_t pwmChannel)
-            : backlightPin(backlightPin), pwmChannel(pwmChannel) {}
+            : backlightPin(backlightPin), pwmChannel(pwmChannel), isInverted(false)
+        {
+            Serial.print("TFTDisplayService constructed. Initial invert state: ");
+            Serial.println(isInverted ? "true" : "false");
+        }
 
         // Initialize display hardware
         void initialize() override
@@ -27,6 +31,11 @@ namespace Infrastructure
             // TFT initialization
             tft.init();
             tft.setRotation(1); // Landscape mode
+
+            // 初期化時に前回の反転状態を適用
+            Serial.print("TFTDisplayService::initialize - Setting initial invert state to: ");
+            Serial.println(isInverted ? "true" : "false");
+            tft.invertDisplay(isInverted);
         }
 
         // 表示状態をリセットする
@@ -46,6 +55,41 @@ namespace Infrastructure
         void clearScreen() override
         {
             tft.fillScreen(TFT_BLACK);
+        }
+
+        // 画面の色を反転する
+        void invertDisplay(bool invert) override
+        {
+            Serial.print("TFTDisplayService::invertDisplay called with: ");
+            Serial.println(invert ? "true" : "false");
+
+            // 状態を更新
+            isInverted = invert;
+
+            // 反転状態を適用
+            tft.invertDisplay(invert);
+
+            Serial.print("Display invert state is now: ");
+            Serial.println(isInverted ? "true" : "false");
+        }
+
+        // 画面が反転状態かどうかを切り替える
+        void toggleInvertDisplay() override
+        {
+            // 現在の状態を反転
+            isInverted = !isInverted;
+
+            Serial.print("TFTDisplayService::toggleInvertDisplay - Toggle invert to: ");
+            Serial.println(isInverted ? "true" : "false");
+
+            // 反転状態を適用
+            tft.invertDisplay(isInverted);
+        }
+
+        // 画面の反転状態を取得する
+        bool getInvertStatus() override
+        {
+            return isInverted;
         }
 
         // Update the entire screen with all schedule data
@@ -155,6 +199,7 @@ namespace Infrastructure
         TFT_eSPI tft;
         uint8_t backlightPin;
         uint8_t pwmChannel;
+        bool isInverted; // 画面反転状態の管理用
 
         // showConnectionStatusメソッドの状態管理用
         static bool isFirstStatusCall;

@@ -48,6 +48,11 @@ namespace Infrastructure
         bool captivePortalActive;
         bool portalConnectionDetected; // キャプティブポータルへの接続検出
 
+        // 設定保存後の再起動用フラグ
+        bool settingsSaved = false;
+        unsigned long settingsSaveTime = 0;
+        bool skipLogging = false; // 重複ログ抑制用フラグ
+
         // 表示設定
         Domain::DisplaySettings displaySettings;
 
@@ -60,7 +65,7 @@ namespace Infrastructure
         void handleWiFiSave();
         void handleSettings();
         void handleNotFound();
-        String getWiFiScanJson();
+        void getWiFiScanJson();
         void sendHeader();
         bool connectToWiFi(const Domain::WiFiSettings &settings);
 
@@ -80,6 +85,12 @@ namespace Infrastructure
         // 表示設定を保存する
         bool saveDisplaySettings(const Domain::DisplaySettings &settings);
 
+        // 画面反転設定をロードする
+        bool loadInvertedDisplaySetting(bool &inverted);
+
+        // 画面反転設定を保存する
+        bool saveInvertedDisplaySetting(bool inverted);
+
         // キャプティブポータルを開始する
         bool startCaptivePortal(const char *apName, const char *apPassword) override;
 
@@ -97,6 +108,9 @@ namespace Infrastructure
 
         // キャプティブポータルに接続があったかどうかを確認する
         bool hasPortalConnections() override;
+
+        // キャプティブポータルの接続検出フラグをリセットする
+        void resetPortalConnectionDetected();
 
         // WiFi接続プロセスを処理する（メインループで呼び出す）
         void process() override;
