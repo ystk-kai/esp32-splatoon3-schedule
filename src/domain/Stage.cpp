@@ -102,6 +102,10 @@ namespace Domain
         {
             return Stage(Type::DRAGON_PALACE_TERMINAL);
         }
+        else if (strcmp(japaneseName, "デカライン高架下") == 0)
+        {
+            return Stage(Type::URCHIN_UNDERPASS);
+        }
         else
         {
             return Stage(Type::UNKNOWN);
@@ -160,6 +164,8 @@ namespace Domain
             return "カジキ空港";
         case Type::DRAGON_PALACE_TERMINAL:
             return "リュウグウターミナル";
+        case Type::URCHIN_UNDERPASS:
+            return "デカライン高架下";
         default:
             return "不明";
         }
@@ -217,6 +223,8 @@ namespace Domain
             return "Marlin Airport";
         case Type::DRAGON_PALACE_TERMINAL:
             return "Dragon Palace Terminal";
+        case Type::URCHIN_UNDERPASS:
+            return "Urchin Underpass";
         default:
             return "Unknown";
         }
@@ -274,6 +282,8 @@ namespace Domain
             return "Kajiki";
         case Type::DRAGON_PALACE_TERMINAL:
             return "Ryuuguu";
+        case Type::URCHIN_UNDERPASS:
+            return "Dekaline";
         default:
             return "Unknown";
         }

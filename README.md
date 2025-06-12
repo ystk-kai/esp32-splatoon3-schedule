@@ -104,6 +104,7 @@ pio device monitor
 | ネギトロ炭鉱       | Bluefin Depot          | Negitoro   |
 | カジキ空港        | Marlin Airport         | Kajiki     |
 | リュウグウターミナル     | Dragon Palace Terminal | Ryuuguu    |
+| デカライン高架下     | Urchin Underpass       | Dekaline   |
 
 ## WiFi 設定（キャプティブポータル）
 

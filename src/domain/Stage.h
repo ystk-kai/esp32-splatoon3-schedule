@@ -39,6 +39,7 @@ namespace Domain
             BLUEFIN_DEPOT,
             MARLIN_AIRPORT,
             DRAGON_PALACE_TERMINAL,
+            URCHIN_UNDERPASS,
             UNKNOWN
         };
 
