@@ -68,6 +68,9 @@ namespace Application
         // Show loading message with background update mode option
         virtual void showLoadingMessage(const char *message, bool backgroundUpdate) = 0;
 
+        // Show device information on screen
+        virtual void showDeviceInfo() = 0;
+
         // Update time display at bottom of screen
         virtual void updateTimeDisplay() = 0;
 

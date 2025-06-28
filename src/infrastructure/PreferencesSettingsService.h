@@ -8,6 +8,7 @@
 #include <Preferences.h>
 #include "../application/SettingsService.h"
 #include "../domain/DisplaySettings.h"
+#include "DeviceInfo.h"
 
 namespace Infrastructure
 {
@@ -82,6 +83,39 @@ namespace Infrastructure
 
             preferences.end();
             return inverted;
+        }
+
+        // デバイス固有のデフォルト設定を取得
+        void getDeviceSpecificDefaults(int &brightness, int &updateInterval)
+        {
+            Infrastructure::DeviceInfo::getDeviceDefaults(brightness, updateInterval);
+        }
+
+        // デバイス固有の設定を初期化
+        void initializeDeviceSpecificSettings()
+        {
+            int defaultBrightness, defaultUpdateInterval;
+            getDeviceSpecificDefaults(defaultBrightness, defaultUpdateInterval);
+
+            preferences.begin(PREF_NAMESPACE, false);
+
+            // デバイス固有のデフォルト設定を保存（初回のみ）
+            // getBoolの第2引数（デフォルト値）を使用して存在チェック
+            if (preferences.getBool("brightness_set", false) == false)
+            {
+                preferences.putInt("brightness", defaultBrightness);
+                preferences.putInt("update_interval", defaultUpdateInterval);
+                preferences.putBool("brightness_set", true);
+
+                Serial.print("Device-specific defaults initialized: ");
+                Serial.print("Brightness=");
+                Serial.print(defaultBrightness);
+                Serial.print(", UpdateInterval=");
+                Serial.print(defaultUpdateInterval);
+                Serial.println("ms");
+            }
+
+            preferences.end();
         }
     };
 }

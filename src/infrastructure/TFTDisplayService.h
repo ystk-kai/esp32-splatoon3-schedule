@@ -120,8 +120,11 @@ namespace Infrastructure
         // Show loading message
         void showLoadingMessage(const char *message) override;
 
-        // Show loading message with background update mode option
+        // Show loading message with background update option
         void showLoadingMessage(const char *message, bool backgroundUpdate) override;
+
+        // Show device information on screen
+        void showDeviceInfo() override;
 
         // Update time display at bottom of screen
         void updateTimeDisplay() override
@@ -220,7 +223,10 @@ namespace Infrastructure
         static constexpr int SCREEN_WIDTH = 320;
         static constexpr int SCREEN_HEIGHT = 240;
         static constexpr int QUADRANT_WIDTH = SCREEN_WIDTH / 2;
-        static constexpr int QUADRANT_HEIGHT = SCREEN_HEIGHT / 2;
+        static constexpr int QUADRANT_HEIGHT = (SCREEN_HEIGHT - 12) / 2; // 下部12ピクセルは時刻表示用
+
+        // バージョン情報
+        static constexpr const char *VERSION = "v1.2.1";
 
         // Helper method to draw a battle quadrant
         void drawBattleQuadrant(

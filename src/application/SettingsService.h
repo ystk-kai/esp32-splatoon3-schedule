@@ -26,7 +26,10 @@ namespace Application
 
         // 画面反転設定を読み込む
         virtual bool loadInvertedDisplaySetting() = 0;
+
+        // デバイス固有の設定を初期化
+        virtual void initializeDeviceSpecificSettings() = 0;
     };
 } // namespace Application
 
-#endif // SETTINGS_SERVICE_H 
+#endif // SETTINGS_SERVICE_H

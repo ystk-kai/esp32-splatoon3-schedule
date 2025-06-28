@@ -1,5 +1,6 @@
 #include "TFTDisplayService.h"
 #include <cstring>
+#include "DeviceInfo.h"
 
 namespace Infrastructure
 {
@@ -122,7 +123,7 @@ namespace Infrastructure
         // バージョン情報
         tft.setTextColor(TFT_LIGHTGREY);
         tft.setCursor(SCREEN_WIDTH - 70, SCREEN_HEIGHT - 20);
-        tft.println("v1.2.0");
+        tft.println(VERSION);
 
         // 反転状態を復元
         if (currentInverted)
@@ -649,6 +650,172 @@ namespace Infrastructure
             shortenedStage[13] = '\0';
             tft.println(shortenedStage);
         }
+
+        // 反転状態を復元
+        if (currentInverted)
+        {
+            tft.invertDisplay(true);
+        }
+    }
+
+    void TFTDisplayService::showDeviceInfo()
+    {
+        // 現在の反転状態を保存
+        bool currentInverted = isInverted;
+
+        // 一時的に反転を無効化して描画
+        if (currentInverted)
+        {
+            tft.invertDisplay(false);
+        }
+
+        clearScreen();
+
+        // 上部に背景色のヘッダーを表示
+        tft.fillRect(0, 0, SCREEN_WIDTH, 30, SPLATOON_BLUE);
+
+        // ヘッダーにタイトルを表示
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(2);
+        tft.setCursor(40, 5);
+        tft.println("Device Info");
+
+        // デバイス情報を表示
+        tft.setTextColor(TFT_WHITE);
+        tft.setTextSize(1);
+        int yPos = 40;
+
+        // デバイス種類
+        tft.setCursor(10, yPos);
+        tft.print("Device: ");
+        tft.setTextColor(SPLATOON_YELLOW);
+        tft.println(Infrastructure::DeviceInfo::getDeviceType());
+        yPos += 18;
+
+        // チップ情報
+        tft.setTextColor(TFT_WHITE);
+        tft.setCursor(10, yPos);
+        tft.print("Chip: ");
+        tft.setTextColor(SPLATOON_YELLOW);
+        tft.println(Infrastructure::DeviceInfo::getChipInfo());
+        yPos += 18;
+
+        // メモリ情報
+        tft.setTextColor(TFT_WHITE);
+        tft.setCursor(10, yPos);
+        tft.print("Memory: ");
+        tft.setTextColor(SPLATOON_GREEN);
+
+        // メモリ情報を複数行に分けて表示
+        size_t freeHeap = ESP.getFreeHeap();
+        size_t minFreeHeap = ESP.getMinFreeHeap();
+        size_t maxAllocHeap = ESP.getMaxAllocHeap();
+
+        tft.print("Free: ");
+        tft.print(freeHeap);
+        tft.println(" bytes");
+        yPos += 12;
+
+        tft.setCursor(10, yPos);
+        tft.setTextColor(TFT_WHITE);
+        tft.print("        Min: ");
+        tft.setTextColor(SPLATOON_GREEN);
+        tft.print(minFreeHeap);
+        tft.println(" bytes");
+        yPos += 12;
+
+        tft.setCursor(10, yPos);
+        tft.setTextColor(TFT_WHITE);
+        tft.print("        Max: ");
+        tft.setTextColor(SPLATOON_GREEN);
+        tft.print(maxAllocHeap);
+        tft.println(" bytes");
+        yPos += 15;
+
+        // フラッシュ情報
+        tft.setTextColor(TFT_WHITE);
+        tft.setCursor(10, yPos);
+        tft.print("Flash: ");
+        tft.setTextColor(SPLATOON_ORANGE);
+
+        // フラッシュ情報を複数行に分けて表示
+        uint32_t flashSize = ESP.getFlashChipSize();
+        uint32_t flashSpeed = ESP.getFlashChipSpeed();
+
+        tft.print("Size: ");
+        tft.print(flashSize / 1024 / 1024);
+        tft.println("MB");
+        yPos += 12;
+
+        tft.setCursor(10, yPos);
+        tft.setTextColor(TFT_WHITE);
+        tft.print("       Speed: ");
+        tft.setTextColor(SPLATOON_ORANGE);
+        tft.print(flashSpeed / 1000000);
+        tft.println("MHz");
+        yPos += 20;
+
+        // ディスプレイ情報
+        tft.setTextColor(TFT_WHITE);
+        tft.setCursor(10, yPos);
+        tft.print("Display: ");
+        tft.setTextColor(SPLATOON_PINK);
+
+        // ディスプレイ情報を複数行に分けて表示
+        int width, height;
+        String displayType;
+        Infrastructure::DeviceInfo::getDisplayDetails(width, height, displayType);
+
+        tft.print(displayType);
+        tft.println(" ");
+        yPos += 12;
+
+        tft.setCursor(10, yPos);
+        tft.setTextColor(TFT_WHITE);
+        tft.print("         ");
+        tft.setTextColor(SPLATOON_PINK);
+        tft.print(width);
+        tft.print("x");
+        tft.print(height);
+        tft.println(" pixels");
+        yPos += 12;
+
+        tft.setCursor(10, yPos);
+        tft.setTextColor(TFT_WHITE);
+        tft.print("         ");
+        tft.setTextColor(SPLATOON_PINK);
+        tft.println(Infrastructure::DeviceInfo::getDisplayColorDepth());
+        yPos += 12;
+
+        tft.setCursor(10, yPos);
+        tft.setTextColor(TFT_WHITE);
+        tft.print("         ");
+        tft.setTextColor(SPLATOON_PINK);
+        tft.println(Infrastructure::DeviceInfo::getDisplayOrientation());
+        yPos += 20;
+
+        // デフォルト設定情報
+        int defaultBrightness, defaultUpdateInterval;
+        Infrastructure::DeviceInfo::getDeviceDefaults(defaultBrightness, defaultUpdateInterval);
+
+        tft.setTextColor(TFT_WHITE);
+        tft.setCursor(10, yPos);
+        tft.print("Default Brightness: ");
+        tft.setTextColor(SPLATOON_PINK);
+        tft.println(defaultBrightness);
+        yPos += 18;
+
+        tft.setTextColor(TFT_WHITE);
+        tft.setCursor(10, yPos);
+        tft.print("Update Interval: ");
+        tft.setTextColor(SPLATOON_PINK);
+        tft.print(defaultUpdateInterval / 1000);
+        tft.println("s");
+
+        // バージョン情報
+        tft.setTextColor(TFT_LIGHTGREY);
+        tft.setCursor(SCREEN_WIDTH - 70, SCREEN_HEIGHT - 20);
+        tft.println(VERSION);
 
         // 反転状態を復元
         if (currentInverted)

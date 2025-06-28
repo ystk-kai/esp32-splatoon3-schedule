@@ -52,6 +52,9 @@ namespace Infrastructure
             Serial.println("\nSplatoon3 Schedule Viewer");
             Serial.println("Initializing...");
 
+            // デバイス固有の設定を初期化
+            settingsService.initializeDeviceSpecificSettings();
+
             // 画面反転設定をメモリに読み込む
             bool invertedDisplay = settingsService.loadInvertedDisplaySetting();
 
@@ -66,6 +69,10 @@ namespace Infrastructure
 
             // 初期化の間隔を空ける
             delay(1000);
+
+            // デバイス情報を画面に表示（3秒間）
+            displayService.showDeviceInfo();
+            delay(3000);
 
             // WiFi接続の初期セットアップ
             wifiConnectionManager.setupWiFiConnection();

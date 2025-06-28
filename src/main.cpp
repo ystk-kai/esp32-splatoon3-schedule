@@ -35,6 +35,7 @@
 #include "infrastructure/ESP32AppInitializationService.h"
 #include "infrastructure/ESP32WiFiConnectionManager.h"
 #include "infrastructure/MemoryManager.h"
+#include "infrastructure/DeviceInfo.h"
 
 // Preferences for storing WiFi credentials and user settings
 Preferences preferences;
@@ -91,6 +92,9 @@ void setup()
 {
     // シリアル初期化
     Serial.begin(115200);
+
+    // デバイス情報を表示
+    Infrastructure::DeviceInfo::printDeviceInfo();
 
     // メモリ統計をリセット
     Infrastructure::MemoryManager::resetMemoryStats();
