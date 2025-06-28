@@ -51,6 +51,9 @@ namespace Infrastructure
 
     void APIScheduleRepository::updateAllSchedules()
     {
+        // メモリ使用量をログ
+        logMemoryUsage("Before updateAllSchedules");
+
         // Update each battle type
         updateScheduleForBattleType(Domain::BattleType::regular());
         delay(200);
@@ -59,6 +62,9 @@ namespace Infrastructure
         updateScheduleForBattleType(Domain::BattleType::bankaraChallenge());
         delay(200);
         updateScheduleForBattleType(Domain::BattleType::bankaraOpen());
+
+        // メモリ使用量をログ
+        logMemoryUsage("After updateAllSchedules");
     }
 
     void APIScheduleRepository::initializeSchedules()
@@ -110,6 +116,9 @@ namespace Infrastructure
             }
         }
 
+        // レスポンス文字列を明示的に解放
+        currentResponse.clear();
+
         delay(200); // Short delay between requests
 
         // Get next schedule
@@ -136,6 +145,9 @@ namespace Infrastructure
                 bankaraOpenNextSchedule = schedule;
             }
         }
+
+        // レスポンス文字列を明示的に解放
+        nextResponse.clear();
     }
 
     Domain::BattleSchedule APIScheduleRepository::parseScheduleFromJson(
@@ -151,6 +163,8 @@ namespace Infrastructure
         {
             Serial.print("JSON parse error: ");
             Serial.println(error.c_str());
+            // JSON ドキュメントを明示的に解放
+            doc.clear();
             return Domain::BattleSchedule::createEmpty(battleType);
         }
 
@@ -219,13 +233,42 @@ namespace Infrastructure
         Serial.println(endTime);
 
         // バトルスケジュールを作成して返す
-        return Domain::BattleSchedule::create(
+        Domain::BattleSchedule result = Domain::BattleSchedule::create(
             battleType,
             rule,
             stage1,
             stage2,
             startTime,
             endTime);
+
+        // JSON ドキュメントを明示的に解放
+        doc.clear();
+
+        return result;
+    }
+
+    void APIScheduleRepository::logMemoryUsage(const char *operation)
+    {
+        // ESP32のメモリ使用量を取得
+        size_t freeHeap = ESP.getFreeHeap();
+        size_t minFreeHeap = ESP.getMinFreeHeap();
+        size_t maxAllocHeap = ESP.getMaxAllocHeap();
+
+        Serial.print("Memory [");
+        Serial.print(operation);
+        Serial.print("] - Free: ");
+        Serial.print(freeHeap);
+        Serial.print(" bytes, Min Free: ");
+        Serial.print(minFreeHeap);
+        Serial.print(" bytes, Max Alloc: ");
+        Serial.print(maxAllocHeap);
+        Serial.println(" bytes");
+
+        // メモリ不足の警告
+        if (freeHeap < 10000) // 10KB未満の場合
+        {
+            Serial.println("WARNING: Low memory detected!");
+        }
     }
 
 } // namespace Infrastructure

@@ -34,6 +34,7 @@
 #include "infrastructure/AppStateManager.h"
 #include "infrastructure/ESP32AppInitializationService.h"
 #include "infrastructure/ESP32WiFiConnectionManager.h"
+#include "infrastructure/MemoryManager.h"
 
 // Preferences for storing WiFi credentials and user settings
 Preferences preferences;
@@ -65,6 +66,10 @@ Infrastructure::ESP32AppInitializationService appInitializationService(
     settingsService,
     appStateManager);
 
+// メモリ監視用の変数
+unsigned long lastMemoryCheck = 0;
+const unsigned long MEMORY_CHECK_INTERVAL = 60000; // 1分ごとにメモリチェック
+
 // 表示設定切り替え関数
 void switchToEnglishDisplay()
 {
@@ -87,14 +92,42 @@ void setup()
     // シリアル初期化
     Serial.begin(115200);
 
+    // メモリ統計をリセット
+    Infrastructure::MemoryManager::resetMemoryStats();
+
+    // 初期メモリ使用量をログ
+    Infrastructure::MemoryManager::logMemoryUsage("Setup start");
+
     // アプリケーションのセットアップ処理
     appInitializationService.performSetup();
+
+    // セットアップ完了後のメモリ使用量をログ
+    Infrastructure::MemoryManager::logMemoryUsage("Setup complete");
 }
 
 void loop()
 {
     // 現在時刻を取得
     unsigned long currentMillis = millis();
+
+    // 定期的なメモリ監視
+    if (currentMillis - lastMemoryCheck >= MEMORY_CHECK_INTERVAL)
+    {
+        Infrastructure::MemoryManager::logMemoryUsage("Periodic check");
+        lastMemoryCheck = currentMillis;
+
+        // メモリ不足の場合は強制ガベージコレクションを試行
+        if (Infrastructure::MemoryManager::isLowMemory())
+        {
+            Infrastructure::MemoryManager::forceGarbageCollection();
+        }
+
+        // メモリ傾向分析を実行
+        Infrastructure::MemoryManager::analyzeMemoryTrend();
+    }
+
+    // 定期的なメモリクリーンアップ
+    Infrastructure::MemoryManager::performPeriodicCleanup();
 
     // アプリケーションのメインループ処理
     appInitializationService.performLoop(currentMillis);

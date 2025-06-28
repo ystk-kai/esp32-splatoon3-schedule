@@ -164,11 +164,18 @@ namespace Infrastructure
             // 接続成功時の表示
             String ipAddress = WiFi.localIP().toString();
             String ssid = WiFi.SSID();
-            String connectionMessage = "Connection OK";
-            connectionMessage += "\nSSID: " + ssid;
-            connectionMessage += "\nIP: " + ipAddress;
-            connectionMessage += "\nInitializing...";
-            displayService.showConnectionStatus(true, connectionMessage.c_str());
+
+            // メモリ効率化のため、文字列連結を最小限に抑える
+            char connectionMessage[128];
+            snprintf(connectionMessage, sizeof(connectionMessage),
+                     "Connection OK\nSSID: %s\nIP: %s\nInitializing...",
+                     ssid.c_str(), ipAddress.c_str());
+
+            displayService.showConnectionStatus(true, connectionMessage);
+
+            // 文字列オブジェクトを明示的に解放
+            ipAddress.clear();
+            ssid.clear();
 
             // 再接続のための安全対策
             WiFi.setAutoReconnect(true);

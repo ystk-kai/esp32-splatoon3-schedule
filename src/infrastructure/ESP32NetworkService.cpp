@@ -50,13 +50,33 @@ namespace Infrastructure
 
         HTTPClient http;
         http.begin(url);
+        
+        // タイムアウト設定を追加
+        http.setTimeout(10000); // 10秒タイムアウト
 
         int httpCode = http.GET();
 
         if (httpCode == HTTP_CODE_OK)
         {
+            // レスポンスサイズをチェックしてメモリ使用量を制限
+            int contentLength = http.getSize();
+            if (contentLength > 0 && contentLength > 16384) // 16KB制限
+            {
+                Serial.print("Response too large: ");
+                Serial.print(contentLength);
+                Serial.println(" bytes");
+                http.end();
+                return "";
+            }
+            
             String payload = http.getString();
             http.end();
+            
+            // メモリ使用量のデバッグ情報
+            Serial.print("HTTP Response size: ");
+            Serial.print(payload.length());
+            Serial.println(" bytes");
+            
             return payload;
         }
         else

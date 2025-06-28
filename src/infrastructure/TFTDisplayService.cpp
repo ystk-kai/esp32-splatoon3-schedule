@@ -122,7 +122,7 @@ namespace Infrastructure
         // バージョン情報
         tft.setTextColor(TFT_LIGHTGREY);
         tft.setCursor(SCREEN_WIDTH - 70, SCREEN_HEIGHT - 20);
-        tft.println("v1.1.0");
+        tft.println("v1.2.0");
 
         // 反転状態を復元
         if (currentInverted)
@@ -147,7 +147,7 @@ namespace Infrastructure
         // 前回のconnected状態を記録
         static bool previousConnected = false;
 
-        // メッセージを文字列に変換
+        // メッセージを文字列に変換（メモリ効率化のため最小限に）
         String message = String(statusMessage);
 
         // すでに接続済みの"Connection OK"画面が表示されている場合は、
@@ -169,6 +169,8 @@ namespace Infrastructure
 
                     if (prevSSIDLine == newSSIDLine)
                     {
+                        // メッセージ文字列を解放してから終了
+                        message.clear();
                         return;
                     }
                 }
@@ -178,6 +180,8 @@ namespace Infrastructure
         // メッセージが全く同じで接続状態も同じなら何もしない（不要な再描画を防止）
         if (!isFirstStatusCall && previousPortalMessage == message && previousConnected == connected)
         {
+            // メッセージ文字列を解放してから終了
+            message.clear();
             return;
         }
 

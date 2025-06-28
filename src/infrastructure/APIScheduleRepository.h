@@ -60,6 +60,9 @@ namespace Infrastructure
             const String &jsonResponse,
             const Domain::BattleType &battleType,
             bool isCurrentSchedule);
+
+        // メモリ使用量監視機能
+        void logMemoryUsage(const char *operation);
     };
 
 } // namespace Infrastructure
